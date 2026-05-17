@@ -13,7 +13,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 - **[Redpanda](./Redpanda)** — Redpanda Kafka-compatible streaming + Console, KafkaHQ, Kafka-UI
 
 ### Storage & Object Store
-- **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage with Nginx
+- **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage
 - **[LakeFS](./LakeFS)** — Standalone LakeFS data lake versioning
 - **[LakeFs-Minio](./LakeFs-Minio)** — LakeFS backed by MinIO (standalone or clustered)
 
