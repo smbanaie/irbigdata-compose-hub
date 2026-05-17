@@ -1,0 +1,43 @@
+services:
+  postgres:
+    container_name: postgres
+    hostname: postgres
+    image: docker.devneeds.ir/library/postgres:${PG_VERSION:-18}
+    volumes:
+      - ./db_data:/var/lib/postgresql
+      - ./postgres-init:/docker-entrypoint-initdb.d
+    environment:
+      - POSTGRES_PASSWORD=${PG_PASS:-postgres123}
+      - POSTGRES_USER=${PG_USER:-postgres}
+      - POSTGRES_DB=${PG_DB:-sepahram}
+      - POSTGRES_HOST_AUTH_METHOD=${PG_AUTH:-trust}
+    networks:
+      - services
+    ports:
+      - 5434:5432
+    restart: always
+
+  pgadmin:
+    container_name: pgadmin4
+    hostname: pgadmin4
+    image: docker.devneeds.ir/dpage/pgadmin4
+    restart: always
+    profiles:
+      - pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin123
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - services
+
+volumes:
+  db_data:
+  pgadmin_data:
+
+networks:
+  services:
+    name: ${APP_NAME:-sepahram}_network
