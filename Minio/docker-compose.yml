@@ -1,46 +1,42 @@
 services:
   minio:
-    image: docker.arvancloud.ir/minio/minio:latest
     container_name: minio
-    hostname: minio
-    command:
-      - server
-      - /data             
-      - "--address"
-      - "0.0.0.0:9000"
-      - "--console-address"
-      - "0.0.0.0:9001"
-    expose:
-      - "9000"
-      - "9001"
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio-data:/data
     environment:
-      MINIO_ROOT_PASSWORD: sepahram
-      MINIO_ROOT_USER: sepahram
+      MINIO_ROOT_USER: miniouser
+      MINIO_ROOT_PASSWORD: miniopassword
+    image: docker.arvancloud.ir/minio/minio:latest
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    entrypoint: sh
+    command: '-c ''mkdir -p /minio_data/starrocks && minio server /minio_data --console-address ":9001"'''
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
-      interval: 10s
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
       timeout: 5s
       retries: 5
-      start_period: 60s
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          memory: 2G
-        reservations:
-          memory: 1G
-    profiles:
-      - minio
     networks:
       - sepahram_net
 
-volumes:
-  minio-data:
+  minio_mc:
+    image: docker.arvancloud.ir/minio/mc:latest
+    entrypoint:
+      - sh
+      - -c
+      - |
+        until mc ls minio > /dev/null 2>&1; do
+          sleep 0.5
+        done
+
+        mc alias set myminio http://minio:9000 miniouser miniopassword
+        mc admin user svcacct add --access-key AAAAAAAAAAAAAAAAAAAA \
+        --secret-key BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
+        myminio \
+        miniouser
+    depends_on:
+      - minio
+    networks:
+      - sepahram_net
 
 networks:
   sepahram_net:

@@ -1,12 +1,15 @@
 # MinIO
 
-Standalone MinIO S3-compatible object storage.
+Standalone MinIO S3-compatible object storage with client init container.
 
 ## Services
 
 | Service | Container | Image | Ports |
 |---------|-----------|-------|-------|
 | **minio** | `minio` | `docker.arvancloud.ir/minio/minio:latest` | `9000`, `9001` |
+| **minio_mc** | — | `docker.arvancloud.ir/minio/mc:latest` | — |
+
+`minio_mc` is a short-lived init container that creates a service account access key pair on startup, then exits.
 
 ## Environment variables
 
@@ -14,7 +17,8 @@ Standalone MinIO S3-compatible object storage.
 |----------|---------|-------------|
 | `APP_NAME` | `sepahram` | Network name suffix |
 
-Credentials are hardcoded: user `sepahram`, password `sepahram`.
+Hardcoded credentials: user `miniouser`, password `miniopassword`.  
+Service account created by `minio_mc`: access key `AAAAAAAAAAAAAAAAAAAA`, secret key `BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB`.
 
 ## Ports
 
@@ -26,8 +30,7 @@ Credentials are hardcoded: user `sepahram`, password `sepahram`.
 ## Usage
 
 ```bash
-# Start MinIO (uses --profile minio)
-docker compose -f docker-compose.yml --profile minio up -d
+docker compose -f docker-compose.yml up -d
 
 # Or with Makefile
 make start
@@ -35,6 +38,4 @@ make start
 
 ## Volumes
 
-| Volume | Path (container) | Purpose |
-|--------|------------------|---------|
-| `minio-data` (named) | `/data` | Object storage data |
+Data is stored inside the container at `/minio_data` (no named volume — use a bind mount for persistence).
