@@ -41,6 +41,42 @@ docker compose up -d
 
 Many folders include a `Makefile` with convenience commands (e.g., `make start`, `make stop`, `make env`).
 
+## Makefiles
+
+Many service folders include a `Makefile` with convenience commands to simplify Docker management.
+
+### Common commands
+
+| Command | Description |
+|---------|-------------|
+| `make up` / `make start` | Start containers in detached mode |
+| `make down` | Stop and remove containers |
+| `make downv` | Stop and remove containers **and** volumes |
+| `make stop` | Stop containers (without removing) |
+| `make restart` | Down then up |
+| `make logs` | Tail container logs |
+| `make ps` | List container status |
+| `make exec` | Open a shell inside the main container |
+| `make run` | Run a one-off command inside the main container |
+| `make stats` | Show live Docker resource usage |
+| `make clean` | Remove all exited containers |
+| `make remove` | Stop and delete containers |
+
+### Using Make on Windows
+
+`make` is not available in PowerShell or Cmd by default. You have several options:
+
+1. **Git Bash** (recommended) — Git for Windows ships with a Bash environment that includes `make`. Use its terminal instead of PowerShell/Cmd, or run `& "C:\Program Files\Git\bin\bash.exe" -c "make <command>"` from PowerShell.
+
+2. **Chocolatey** — Install make globally:
+   ```powershell
+   choco install make
+   ```
+
+3. **GnuWin32** — Download `make` from GnuWin32 and add it to your `PATH`.
+
+4. **WSL** — Run `make` inside Windows Subsystem for Linux.
+
 ## Requirements
 
 - Docker Engine 24+
