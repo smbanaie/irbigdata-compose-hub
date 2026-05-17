@@ -1,0 +1,92 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "StarRocks Cluster Overview",
+    "tags": ["starrocks", "database", "monitoring"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Cluster Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"starrocks-fe\"}",
+            "legendFormat": "FE Nodes"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "options": {
+                  "0": {
+                    "text": "DOWN",
+                    "color": "red"
+                  },
+                  "1": {
+                    "text": "UP",
+                    "color": "green"
+                  }
+                },
+                "type": "value"
+              }
+            ]
+          }
+        }
+      },
+      {
+        "id": 2,
+        "title": "Query Performance",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(starrocks_fe_query_total_query_count[5m])",
+            "legendFormat": "Queries/sec"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "starrocks_fe_memory_usage_bytes / starrocks_fe_memory_limit_bytes * 100",
+            "legendFormat": "FE Memory %"
+          },
+          {
+            "expr": "starrocks_cn_memory_usage_bytes / starrocks_cn_memory_limit_bytes * 100",
+            "legendFormat": "CN Memory %"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "MinIO Storage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "minio_bucket_usage_total_bytes{bucket=\"starrocks\"}",
+            "legendFormat": "Used Bytes"
+          }
+        ]
+      }
+    ],
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": []
+    },
+    "refresh": "30s",
+    "schemaVersion": 27,
+    "version": 0,
+    "links": []
+  }
+}

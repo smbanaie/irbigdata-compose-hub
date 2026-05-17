@@ -1,239 +1,795 @@
+---
 version: '3.8'
 
-networks:
-  starrocks-net:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+# =============================================================================
+# StarRocks 4.0.5 Production Cluster with MinIO Storage
+# =============================================================================
+# This compose file creates a production-ready StarRocks cluster with
+# embedded 3-node MinIO cluster fronted by HAProxy load balancer.
+#
+# Architecture:
+# - 3 Frontend (FE) nodes for high availability
+# - 3 Compute Node (CN) instances for query execution
+# - HAProxy load balancer for FE nodes
+# - 3-node MinIO distributed cluster + HAProxy LB for S3 storage
+# - Monitoring stack (Prometheus + Grafana)
+#
+# Access Points:
+# - StarRocks SQL: haproxy-fe:9030 or localhost:9031
+# - StarRocks Web UI: localhost:8031
+# - MinIO S3 (via LB): localhost:9100
+- MinIO Console: localhost:9001
+# - MinIO Console: localhost:9001
+# - Prometheus: localhost:9501
+# - Grafana: localhost:3002
+# =============================================================================
 
-volumes:
-  minio1-data:
-  minio2-data:
-  minio3-data:
-  fe1-meta:
-  fe2-meta:
-  fe3-meta:
-  cn1-data:
-  cn2-data:
-  cn3-data:
+networks:
+  starrocks-network:
+    driver: bridge
+    name: starrocks-network
 
 services:
-  # MinIO Cluster (3 nodes)
-  minio1:
-    image: docker.arvancloud.ir/minio/minio:latest
-    container_name: minio1
-    hostname: minio1
-    networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.10
-    volumes:
-      - minio1-data:/data
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-      MINIO_VOLUMES: "http://minio{1...3}:9000/data"
-    command: server --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+  # =============================================================================
+  # StarRocks Frontend Nodes (FE) - High Availability
+  # Handles metadata management, query planning, and SQL parsing
+  # =============================================================================
+  starrocks-fe-1:
+    image: starrocks/fe-ubuntu:4.0.5
+    container_name: starrocks-fe-1
+    hostname: starrocks-fe-1
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Configure FE for shared-data mode with MinIO S3 storage
+        cat >> /opt/starrocks/fe/conf/fe.conf << EOF
+        # Enable shared data mode for decoupled storage-compute
+        run_mode = shared_data
+        cloud_native_storage_type = S3
+
+        # MinIO S3 configuration (reusing RisingWave MinIO cluster)
+        aws_s3_endpoint = minio-lb:9000
+        aws_s3_path = starrocks
+        aws_s3_access_key = hummockadmin
+        aws_s3_secret_key = hummockadmin
+        aws_s3_region = us-east-1
+        aws_s3_use_instance_profile = false
+        aws_s3_use_aws_sdk_default_behavior = false
+
+        # Enable auto-creation of default storage volume
+        enable_load_volume_from_conf = true
+
+        # FE-specific configurations
+        sys_log_level = INFO
+        edit_log_port = 9010
+        http_port = 8030
+        rpc_port = 9020
+        query_port = 9030
+        mysql_service_nio_enabled = true
+
+        # High availability settings
+        master_sync_policy = SYNC
+        replica_sync_policy = SYNC
+
+        # Performance tuning
+        max_running_txn_num_per_db = 1000
+        streaming_load_max_mb = 10240
+        EOF
+
+        # Start FE with FQDN host type
+        /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN
+    expose:
+      - "8030"   # HTTP port
+      - "9010"   # Edit log port
+      - "9020"   # RPC port
+      - "9030"   # Query port
     ports:
-      - "9001:9001"
+      - "8030:8030"   # FE HTTP UI
+      - "9030:9030"   # FE SQL query port
+    volumes:
+      - starrocks-fe-1-data:/opt/starrocks/fe/meta
+      - starrocks-fe-1-log:/opt/starrocks/fe/log
+    environment:
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-1", "-P", "9030", "-e", "show frontends\\G", "|", "grep", "Alive: true"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    depends_on:
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+  starrocks-fe-2:
+    image: starrocks/fe-ubuntu:4.0.5
+    container_name: starrocks-fe-2
+    hostname: starrocks-fe-2
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Configure FE for shared-data mode with MinIO S3 storage
+        cat >> /opt/starrocks/fe/conf/fe.conf << EOF
+        # Enable shared data mode for decoupled storage-compute
+        run_mode = shared_data
+        cloud_native_storage_type = S3
+
+        # MinIO S3 configuration (reusing RisingWave MinIO cluster)
+        aws_s3_endpoint = minio-lb:9000
+        aws_s3_path = starrocks
+        aws_s3_access_key = hummockadmin
+        aws_s3_secret_key = hummockadmin
+        aws_s3_region = us-east-1
+        aws_s3_use_instance_profile = false
+        aws_s3_use_aws_sdk_default_behavior = false
+
+        # Enable auto-creation of default storage volume
+        enable_load_volume_from_conf = true
+
+        # FE-specific configurations
+        sys_log_level = INFO
+        edit_log_port = 9010
+        http_port = 8030
+        rpc_port = 9020
+        query_port = 9030
+        mysql_service_nio_enabled = true
+
+        # High availability settings
+        master_sync_policy = SYNC
+        replica_sync_policy = SYNC
+
+        # Performance tuning
+        max_running_txn_num_per_db = 1000
+        streaming_load_max_mb = 10240
+        EOF
+
+        # Start FE with FQDN host type
+        /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN --helper starrocks-fe-1:9010
+    expose:
+      - "8030"   # HTTP port
+      - "9010"   # Edit log port
+      - "9020"   # RPC port
+      - "9030"   # Query port
+    ports:
+      - "8032:8030"   # FE HTTP UI
+      - "9032:9030"   # FE SQL query port
+    volumes:
+      - starrocks-fe-2-data:/opt/starrocks/fe/meta
+      - starrocks-fe-2-log:/opt/starrocks/fe/log
+    environment:
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-2", "-P", "9030", "-e", "show frontends\\G", "|", "grep", "Alive: true"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    depends_on:
+      starrocks-fe-1:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+
+  starrocks-fe-3:
+    image: starrocks/fe-ubuntu:4.0.5
+    container_name: starrocks-fe-3
+    hostname: starrocks-fe-3
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Configure FE for shared-data mode with MinIO S3 storage
+        cat >> /opt/starrocks/fe/conf/fe.conf << EOF
+        # Enable shared data mode for decoupled storage-compute
+        run_mode = shared_data
+        cloud_native_storage_type = S3
+
+        # MinIO S3 configuration (reusing RisingWave MinIO cluster)
+        aws_s3_endpoint = minio-lb:9000
+        aws_s3_path = starrocks
+        aws_s3_access_key = hummockadmin
+        aws_s3_secret_key = hummockadmin
+        aws_s3_region = us-east-1
+        aws_s3_use_instance_profile = false
+        aws_s3_use_aws_sdk_default_behavior = false
+
+        # Enable auto-creation of default storage volume
+        enable_load_volume_from_conf = true
+
+        # FE-specific configurations
+        sys_log_level = INFO
+        edit_log_port = 9010
+        http_port = 8030
+        rpc_port = 9020
+        query_port = 9030
+        mysql_service_nio_enabled = true
+
+        # High availability settings
+        master_sync_policy = SYNC
+        replica_sync_policy = SYNC
+
+        # Performance tuning
+        max_running_txn_num_per_db = 1000
+        streaming_load_max_mb = 10240
+        EOF
+
+        # Start FE with FQDN host type
+        /opt/starrocks/fe/bin/start_fe.sh --host_type FQDN --helper starrocks-fe-1:9010
+    expose:
+      - "8030"   # HTTP port
+      - "9010"   # Edit log port
+      - "9020"   # RPC port
+      - "9030"   # Query port
+    ports:
+      - "8033:8030"   # FE HTTP UI
+      - "9033:9030"   # FE SQL query port
+    volumes:
+      - starrocks-fe-3-data:/opt/starrocks/fe/meta
+      - starrocks-fe-3-log:/opt/starrocks/fe/log
+    environment:
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-3", "-P", "9030", "-e", "show frontends\\G", "|", "grep", "Alive: true"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+          cpus: '2.0'
+        reservations:
+          memory: 2G
+          cpus: '1.0'
+    depends_on:
+      starrocks-fe-1:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+
+  # =============================================================================
+  # StarRocks Compute Nodes (CN) - Query Execution
+  # Handles distributed query execution and computation
+  # =============================================================================
+  starrocks-cn-1:
+    image: starrocks/cn-ubuntu:4.0.5
+    container_name: starrocks-cn-1
+    hostname: starrocks-cn-1
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Set system limits for better performance
+        ulimit -u 65535
+        ulimit -n 65535
+
+        # Wait for FE to be ready and register CN
+        sleep 30
+        mysql --connect-timeout 10 -h starrocks-fe-1 -P9030 -uroot -e "ALTER SYSTEM ADD COMPUTE NODE \"starrocks-cn-1:9050\";"
+
+        # Start CN
+        /opt/starrocks/cn/bin/start_cn.sh
+    expose:
+      - "8040"   # HTTP port
+      - "9050"   # Thrift port
+      - "9060"   # BRPC port
+    ports:
+      - "8040:8040"   # CN HTTP UI
+    volumes:
+      - starrocks-cn-1-data:/opt/starrocks/cn/storage
+      - starrocks-cn-1-log:/opt/starrocks/cn/log
+    environment:
+      - HOST_TYPE=FQDN
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-1", "-P", "9030", "-e", "SHOW COMPUTE NODES\\G", "|", "grep", "-A", "5", "starrocks-cn-1", "|", "grep", "Alive: true"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: '4.0'
+        reservations:
+          memory: 8G
+          cpus: '2.0'
+    depends_on:
+      starrocks-fe-1:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+
+  starrocks-cn-2:
+    image: starrocks/cn-ubuntu:4.0.5
+    container_name: starrocks-cn-2
+    hostname: starrocks-cn-2
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Set system limits for better performance
+        ulimit -u 65535
+        ulimit -n 65535
+
+        # Wait for FE to be ready and register CN
+        sleep 30
+        mysql --connect-timeout 10 -h starrocks-fe-1 -P9030 -uroot -e "ALTER SYSTEM ADD COMPUTE NODE \"starrocks-cn-2:9050\";"
+
+        # Start CN
+        /opt/starrocks/cn/bin/start_cn.sh
+    expose:
+      - "8040"   # HTTP port
+      - "9050"   # Thrift port
+      - "9060"   # BRPC port
+    ports:
+      - "8041:8040"   # CN HTTP UI
+    volumes:
+      - starrocks-cn-2-data:/opt/starrocks/cn/storage
+      - starrocks-cn-2-log:/opt/starrocks/cn/log
+    environment:
+      - HOST_TYPE=FQDN
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-1", "-P", "9030", "-e", "SHOW COMPUTE NODES\\G", "|", "grep", "-A", "5", "starrocks-cn-2", "|", "grep", "Alive: true"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: '4.0'
+        reservations:
+          memory: 8G
+          cpus: '2.0'
+    depends_on:
+      starrocks-fe-1:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+
+  starrocks-cn-3:
+    image: starrocks/cn-ubuntu:4.0.5
+    container_name: starrocks-cn-3
+    hostname: starrocks-cn-3
+    user: root
+    command:
+      - /bin/bash
+      - -c
+      - |
+        # Set system limits for better performance
+        ulimit -u 65535
+        ulimit -n 65535
+
+        # Wait for FE to be ready and register CN
+        sleep 30
+        mysql --connect-timeout 10 -h starrocks-fe-1 -P9030 -uroot -e "ALTER SYSTEM ADD COMPUTE NODE \"starrocks-cn-3:9050\";"
+
+        # Start CN
+        /opt/starrocks/cn/bin/start_cn.sh
+    expose:
+      - "8040"   # HTTP port
+      - "9050"   # Thrift port
+      - "9060"   # BRPC port
+    ports:
+      - "8042:8040"   # CN HTTP UI
+    volumes:
+      - starrocks-cn-3-data:/opt/starrocks/cn/storage
+      - starrocks-cn-3-log:/opt/starrocks/cn/log
+    environment:
+      - HOST_TYPE=FQDN
+      - STARROCKS_ROOT_PASSWORD=StarRocks123
+    healthcheck:
+      test: ["CMD", "mysql", "-u", "root", "-h", "starrocks-fe-1", "-P", "9030", "-e", "SHOW COMPUTE NODES\\G", "|", "grep", "-A", "5", "starrocks-cn-3", "|", "grep", "Alive: true"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 16G
+          cpus: '4.0'
+        reservations:
+          memory: 8G
+          cpus: '2.0'
+    depends_on:
+      starrocks-fe-1:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+      - starrocks-network
+
+
+  # =============================================================================
+  # HAProxy Load Balancer for FE Nodes
+  # Provides high availability and load balancing for SQL queries
+  # =============================================================================
+  haproxy-fe:
+    image: haproxy:2.9-alpine
+    container_name: haproxy-fe
+    hostname: haproxy-fe
+    ports:
+      - "9031:9030"   # Load balanced SQL queries
+      - "8031:8030"   # Load balanced HTTP UI
+    volumes:
+      - ./haproxy-fe.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - starrocks-fe-1
+      - starrocks-fe-2
+      - starrocks-fe-3
+    healthcheck:
+      test: ["CMD", "nc", "-z", "127.0.0.1", "9030"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.2'
+    networks:
+      - starrocks-network
+
+  # =============================================================================
+  # StarRocks Initialization Service
+  # Creates necessary buckets and configurations in MinIO
+  # =============================================================================
+  starrocks-init:
+    image: minio/mc:latest
+    container_name: starrocks-init
+    depends_on:
+      minio-1:
+        condition: service_healthy
+      minio-2:
+        condition: service_healthy
+      minio-3:
+        condition: service_healthy
+      minio-lb:
+        condition: service_healthy
+    networks:
+
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        echo "Waiting for MinIO cluster to be ready..."
+        sleep 15
+
+        echo "Setting up MinIO alias for StarRocks..."
+        until mc alias set starrocks-minio http://minio-lb:9000 hummockadmin hummockadmin; do
+          echo "Waiting for MinIO connection..."
+          sleep 2
+        done
+
+        echo "Creating StarRocks bucket..."
+        mc mb starrocks-minio/starrocks --ignore-existing
+
+        echo "Setting bucket policy for StarRocks..."
+        mc policy set public starrocks-minio/starrocks
+
+        echo "StarRocks MinIO initialization complete!"
+    restart: "no"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # =============================================================================
+  # Monitoring Stack - Prometheus for StarRocks
+  # =============================================================================
+  prometheus-starrocks:
+    image: prom/prometheus:latest
+    container_name: prometheus-starrocks
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+      - "--web.listen-address=0.0.0.0:9090"
+      - "--storage.tsdb.retention.time=30d"
+    expose:
+      - "9090"
+    ports:
+      - "9501:9090"
+    volumes:
+      - prometheus-starrocks-data:/prometheus
+      - ./prometheus-starrocks.yml:/etc/prometheus/prometheus.yml
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'printf \"GET /-/healthy HTTP/1.0\\n\\n\" | nc localhost 9090; exit $$?;'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
+    networks:
+      - starrocks-network
+
+  # =============================================================================
+  # Grafana for StarRocks Monitoring
+  # =============================================================================
+  grafana-starrocks:
+    image: grafana/grafana-oss:latest
+    container_name: grafana-starrocks
+    expose:
+      - "3000"
+    ports:
+      - "3002:3000"
+    depends_on:
+      prometheus-starrocks:
+        condition: service_healthy
+    volumes:
+      - grafana-starrocks-data:/var/lib/grafana
+      - ./grafana-starrocks-datasource.yml:/etc/grafana/provisioning/datasources/grafana-starrocks-datasource.yml
+      - ./grafana-starrocks-dashboard.yml:/etc/grafana/provisioning/dashboards/grafana-starrocks-dashboard.yml
+      - ./starrocks-dashboards:/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin123
+      - GF_USERS_ALLOW_SIGN_UP=false
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'printf \"GET / HTTP/1.1\\n\\n\" > /dev/tcp/127.0.0.1/3000; exit $$?;'"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
+    networks:
+      - starrocks-network
+
+  # =============================================================================
+  # MinIO Cluster (3 nodes) + HAProxy Load Balancer
+  # =============================================================================
+  minio-1:
+    image: docker.arvancloud.ir/minio/minio:latest
+    container_name: minio-1
+    hostname: minio-1
+    command:
+      - server
+      - "--address"
+      - "0.0.0.0:9000"
+      - "--console-address"
+      - "0.0.0.0:9001"
+      - "http://minio-{1...3}:9000/data"
+    expose:
+      - "9000"
+      - "9001"
+    ports:
       - "9000:9000"
-    restart: unless-stopped
-
-  minio2:
-    image: docker.arvancloud.ir/minio/minio:latest
-    container_name: minio2
-    hostname: minio2
-    networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.11
+      - "9001:9001"
     volumes:
-      - minio2-data:/data
+      - minio-data-1:/data
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-      MINIO_VOLUMES: "http://minio{1...3}:9000/data"
-    command: server --console-address ":9001"
+      MINIO_ROOT_PASSWORD: hummockadmin
+      MINIO_ROOT_USER: hummockadmin
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-    ports:
-      - "9002:9001"
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
-
-  minio3:
-    image: docker.arvancloud.ir/minio/minio:latest
-    container_name: minio3
-    hostname: minio3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
     networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.12
-    volumes:
-      - minio3-data:/data
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin123
-      MINIO_VOLUMES: "http://minio{1...3}:9000/data"
-    command: server --console-address ":9001"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      - starrocks-network
+
+  minio-2:
+    image: docker.arvancloud.ir/minio/minio:latest
+    container_name: minio-2
+    hostname: minio-2
+    command:
+      - server
+      - "--address"
+      - "0.0.0.0:9000"
+      - "--console-address"
+      - "0.0.0.0:9001"
+      - "http://minio-{1...3}:9000/data"
+    expose:
+      - "9000"
+      - "9001"
     ports:
+      - "9002:9000"
       - "9003:9001"
-    restart: unless-stopped
-
-  # StarRocks FE Nodes (3 nodes for HA)
-  fe1:
-    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0-latest
-    container_name: starrocks-fe1
-    hostname: fe1
-    networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.20
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
     volumes:
-      - fe1-meta:/opt/starrocks/fe/meta
-      - ./config/fe1.conf:/opt/starrocks/fe/conf/fe.conf:ro
-    ports:
-      - "8031:8030"
-      - "9021:9020"
-      - "9031:9030"
+      - minio-data-2:/data
+    environment:
+      MINIO_ROOT_PASSWORD: hummockadmin
+      MINIO_ROOT_USER: hummockadmin
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8030/api/bootstrap"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 60s
     restart: unless-stopped
-    depends_on:
-      - minio1
-      - minio2
-      - minio3
-
-  fe2:
-    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0-latest
-    container_name: starrocks-fe2
-    hostname: fe2
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
     networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.21
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
-    volumes:
-      - fe2-meta:/opt/starrocks/fe/meta
-      - ./config/fe2.conf:/opt/starrocks/fe/conf/fe.conf:ro
+      - starrocks-network
+
+  minio-3:
+    image: docker.arvancloud.ir/minio/minio:latest
+    container_name: minio-3
+    hostname: minio-3
+    command:
+      - server
+      - "--address"
+      - "0.0.0.0:9000"
+      - "--console-address"
+      - "0.0.0.0:9001"
+      - "http://minio-{1...3}:9000/data"
+    expose:
+      - "9000"
+      - "9001"
     ports:
-      - "8032:8030"
-      - "9022:9020"
-      - "9032:9030"
+      - "9004:9000"
+      - "9005:9001"
+    volumes:
+      - minio-data-3:/data
+    environment:
+      MINIO_ROOT_PASSWORD: hummockadmin
+      MINIO_ROOT_USER: hummockadmin
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8030/api/bootstrap"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "curl -f http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
       retries: 5
+      start_period: 60s
     restart: unless-stopped
-    depends_on:
-      - fe1
-
-  fe3:
-    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0-latest
-    container_name: starrocks-fe3
-    hostname: fe3
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
     networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.22
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
-    volumes:
-      - fe3-meta:/opt/starrocks/fe/meta
-      - ./config/fe3.conf:/opt/starrocks/fe/conf/fe.conf:ro
+      - starrocks-network
+
+  minio-lb:
+    image: docker.arvancloud.ir/library/haproxy:2.9-alpine
+    container_name: minio-lb
+    hostname: minio-lb
+    depends_on:
+      minio-1:
+        condition: service_healthy
+      minio-2:
+        condition: service_healthy
+      minio-3:
+        condition: service_healthy
     ports:
-      - "8033:8030"
-      - "9023:9020"
-      - "9033:9030"
+      - "9100:9000"
+      - "8404:8404"
+    volumes:
+      - ./haproxy-minio.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8030/api/bootstrap"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
-    depends_on:
-      - fe1
-
-  # StarRocks Compute Nodes (3 nodes)
-  cn1:
-    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0-latest
-    container_name: starrocks-cn1
-    hostname: cn1
+      test: ["CMD", "sh", "-c", "wget -q --spider http://localhost:8404/stats || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.30
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
-    volumes:
-      - cn1-data:/opt/starrocks/cn/storage
-      - ./config/cn1.conf:/opt/starrocks/cn/conf/cn.conf:ro
-    ports:
-      - "8041:8040"
-      - "9051:9050"
-    restart: unless-stopped
-    depends_on:
-      - fe1
-      - fe2
-      - fe3
+      - starrocks-network
 
-  cn2:
-    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0-latest
-    container_name: starrocks-cn2
-    hostname: cn2
-    networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.31
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
-    volumes:
-      - cn2-data:/opt/starrocks/cn/storage
-      - ./config/cn2.conf:/opt/starrocks/cn/conf/cn.conf:ro
-    ports:
-      - "8042:8040"
-      - "9052:9050"
-    restart: unless-stopped
-    depends_on:
-      - fe1
-      - fe2
-      - fe3
+# =============================================================================
+# Volumes for Persistent Data
+# =============================================================================
+volumes:
+  # MinIO data volumes
+  minio-data-1:
+  minio-data-2:
+  minio-data-3:
 
-  cn3:
-    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0-latest
-    container_name: starrocks-cn3
-    hostname: cn3
-    networks:
-      starrocks-net:
-        ipv4_address: 172.20.0.32
-    environment:
-      - TZ=UTC
-      - HOST_TYPE=FQDN
-    volumes:
-      - cn3-data:/opt/starrocks/cn/storage
-      - ./config/cn3.conf:/opt/starrocks/cn/conf/cn.conf:ro
-    ports:
-      - "8043:8040"
-      - "9053:9050"
-    restart: unless-stopped
-    depends_on:
-      - fe1
-      - fe2
-      - fe3
+  # StarRocks FE data volumes
+  starrocks-fe-1-data:
+    external: false
+  starrocks-fe-2-data:
+    external: false
+  starrocks-fe-3-data:
+    external: false
+
+  # StarRocks FE log volumes
+  starrocks-fe-1-log:
+    external: false
+  starrocks-fe-2-log:
+    external: false
+  starrocks-fe-3-log:
+    external: false
+
+  # StarRocks CN data volumes
+  starrocks-cn-1-data:
+    external: false
+  starrocks-cn-2-data:
+    external: false
+  starrocks-cn-3-data:
+    external: false
+
+  # StarRocks CN log volumes
+  starrocks-cn-1-log:
+    external: false
+  starrocks-cn-2-log:
+    external: false
+  starrocks-cn-3-log:
+    external: false
+
+  # Monitoring volumes
+  prometheus-starrocks-data:
+    external: false
+  grafana-starrocks-data:
+    external: false

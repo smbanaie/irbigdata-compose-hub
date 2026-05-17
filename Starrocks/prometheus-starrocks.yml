@@ -1,0 +1,52 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  # - "first_rules.yml"
+  # - "second_rules.yml"
+
+scrape_configs:
+  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # StarRocks Frontend Nodes
+  - job_name: 'starrocks-fe'
+    static_configs:
+      - targets: ['starrocks-fe-1:8030', 'starrocks-fe-2:8030', 'starrocks-fe-3:8030']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    params:
+      format: ['prometheus']
+
+  # StarRocks Compute Nodes
+  - job_name: 'starrocks-cn'
+    static_configs:
+      - targets: ['starrocks-cn-1:8040', 'starrocks-cn-2:8040', 'starrocks-cn-3:8040']
+    scrape_interval: 30s
+    metrics_path: '/metrics'
+    params:
+      format: ['prometheus']
+
+  # HAProxy Load Balancer
+  - job_name: 'haproxy'
+    static_configs:
+      - targets: ['haproxy-fe:8404']
+    scrape_interval: 30s
+    metrics_path: '/stats'
+    params:
+      format: ['prometheus']
+
+  # MinIO (from RisingWave cluster)
+  - job_name: 'minio'
+    static_configs:
+      - targets: ['minio-lb:9000']
+    scrape_interval: 30s
+    metrics_path: '/minio/v2/metrics/cluster'
+    params:
+      format: ['prometheus']
+    basic_auth:
+      username: 'hummockadmin'
+      password: 'hummockadmin'

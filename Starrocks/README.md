@@ -1,83 +1,68 @@
-# StarRocks
+# StarRocks 4.0.5 Production Cluster
 
-StarRocks v4 cluster in shared-data mode with 3 MinIO nodes, 3 FE (Frontend) nodes, and 3 CN (Compute Node) nodes.
+Production-ready StarRocks cluster with embedded 3-node MinIO + HAProxy load balancer.
 
 ## Architecture
 
-| Layer | Nodes | IPs | Ports (host:container) |
-|-------|-------|-----|----------------------|
-| **MinIO** | minio1, minio2, minio3 | `.10–.12` | `9000:9000`, `9001–9003:9001` |
-| **FE** | fe1 (leader), fe2, fe3 (followers) | `.20–.22` | `8031–8033:8030`, `9021–9023:9020`, `9031–9033:9030` |
-| **CN** | cn1, cn2, cn3 | `.30–.32` | `8041–8043:8040`, `9051–9053:9050` |
+- **3 FE nodes**: SQL parsing, query planning, metadata management
+- **3 CN nodes**: Distributed query execution
+- **HAProxy (FE)**: Load balancing for SQL queries
+- **3-node MinIO cluster + HAProxy LB**: S3-compatible object storage
+- **Monitoring**: Prometheus + Grafana
 
-- Network: `starrocks-net` (bridge, `172.20.0.0/16`)
-- Run mode: `shared_data` (S3-backed via MinIO)
-- MinIO credentials: `minioadmin` / `minioadmin123`
-
-## Usage
+## Quick Start
 
 ```bash
-# Automated setup (recommended)
-chmod +x setup.sh
-./setup.sh
+docker compose -f docker-compose.yml up -d
 
-# Or step by step
-docker compose -f docker-compose.yml up -d minio1 minio2 minio3
-docker compose -f docker-compose.yml up -d fe1
-docker compose -f docker-compose.yml up -d fe2 fe3
-docker compose -f docker-compose.yml up -d cn1 cn2 cn3
+# Wait for initialization (2-3 min)
+docker compose logs -f starrocks-init
 
-# Add FE followers
-docker exec starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root \
-  -e "ALTER SYSTEM ADD FOLLOWER 'fe2:9010';"
-docker exec starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root \
-  -e "ALTER SYSTEM ADD FOLLOWER 'fe3:9010';"
-
-# Add compute nodes
-docker exec starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root \
-  -e "ALTER SYSTEM ADD COMPUTE NODE 'cn1:9050';"
-docker exec starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root \
-  -e "ALTER SYSTEM ADD COMPUTE NODE 'cn2:9050';"
-docker exec starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root \
-  -e "ALTER SYSTEM ADD COMPUTE NODE 'cn3:9050';"
-
-# Create default storage volume
-docker exec -i starrocks-fe1 mysql -h 127.0.0.1 -P 9030 -u root << 'EOF'
-CREATE STORAGE VOLUME IF NOT EXISTS default_storage_volume
-TYPE = S3
-LOCATIONS = ('s3://starrocks/')
-PROPERTIES (
-    "enabled" = "true",
-    "aws.s3.region" = "us-east-1",
-    "aws.s3.endpoint" = "http://minio1:9000",
-    "aws.s3.use_instance_profile" = "false",
-    "aws.s3.use_aws_sdk_default_behavior" = "false"
-);
-SET default_storage_volume = default_storage_volume;
-EOF
+# Verify
+mysql -h localhost -P 9031 -u root
 ```
 
-## Config files (`config/`)
+## Access Points
 
-| File | Purpose |
-|------|---------|
-| `fe1.conf`, `fe2.conf`, `fe3.conf` | Frontend node configs |
-| `cn1.conf`, `cn2.conf`, `cn3.conf` | Compute node configs |
+| Service | URL | Description |
+|---------|-----|-------------|
+| StarRocks SQL | `localhost:9031` | Load-balanced SQL queries |
+| StarRocks Web UI | `localhost:8031` | Cluster management |
+| MinIO S3 (via LB) | `localhost:9100` | S3-compatible API |
+| MinIO Console | `localhost:9001` | Object storage UI (minio-1) |
+| Prometheus | `localhost:9501` | Metrics |
+| Grafana | `localhost:3002` | Dashboards (admin/admin123) |
+| HAProxy Stats | `localhost:8404/stats` | Load balancer stats |
 
-Each config mounts as read-only into the container's `conf/` directory.
+## MinIO Integration
 
-## Kafka Connectivity
+- **Internal endpoint**: `minio-lb:9000`
+- **External endpoint**: `localhost:9100`
+- **Bucket**: `starrocks`
+- **Credentials**: `hummockadmin` / `hummockadmin`
+- **Region**: `us-east-1`
 
-See `kafka-network-settings.yaml` for connecting StarRocks to Kafka — covers `extra_hosts`, shared Docker networks, remote brokers, and SSL auth.
+## Services
 
-## Port Reference
+| Service | Container | Ports |
+|---------|-----------|-------|
+| **minio-1** | `minio-1` | `9000:9000`, `9001:9001` |
+| **minio-2** | `minio-2` | `9002:9000`, `9003:9001` |
+| **minio-3** | `minio-3` | `9004:9000`, `9005:9001` |
+| **minio-lb** | `minio-lb` | `9100:9000`, `8404:8404` |
+| **starrocks-fe-1** | `starrocks-fe-1` | `8030:8030`, `9030:9030` |
+| **starrocks-fe-2** | `starrocks-fe-2` | `8032:8030`, `9032:9030` |
+| **starrocks-fe-3** | `starrocks-fe-3` | `8033:8030`, `9033:9030` |
+| **haproxy-fe** | `haproxy-fe` | `9031:9030`, `8031:8030` |
+| **starrocks-cn-{1..3}** | `starrocks-cn-{1..3}` | `8040-8042:8040` |
+| **prometheus-starrocks** | `prometheus-starrocks` | `9501:9090` |
+| **grafana-starrocks** | `grafana-starrocks` | `3002:3000` |
+| **starrocks-init** | `starrocks-init` | — (one-time init) |
 
-| Port | Service |
-|------|---------|
-| `9000` | MinIO S3 API |
-| `9001–9003` | MinIO Console (per node) |
-| `8031–8033` | FE HTTP (web UI) |
-| `9021–9023` | FE RPC |
-| `9031–9033` | FE MySQL query |
-| `8041–8043` | CN HTTP |
-| `9051–9053` | CN heartbeat |
+## Configuration
+
+FE config is generated inline in the compose file via shell commands appended to `fe.conf`. Key settings:
+
+- `run_mode = shared_data`
+- `cloud_native_storage_type = S3`
+- `aws_s3_endpoint = minio-lb:9000`
