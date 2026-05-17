@@ -1,0 +1,190 @@
+# =====================================================
+# Docker Compose Addition for Kafka Connectivity
+# Add this to your existing docker-compose.yml
+# =====================================================
+
+# OPTION 1: If Kafka is on the same Docker host
+# =====================================================
+# Add extra_hosts to each StarRocks service (fe1, fe2, fe3, cn1, cn2, cn3)
+
+services:
+  fe1:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"  # Maps to host machine IP
+      - "kafka-broker-2:192.168.1.101"  # Or specific IP
+      - "kafka-broker-3:192.168.1.102"
+
+  fe2:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+
+  fe3:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+
+  cn1:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+
+  cn2:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+
+  cn3:
+    # ... existing configuration ...
+    extra_hosts:
+      - "kafka-broker-1:host-gateway"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+
+# =====================================================
+# OPTION 2: If Kafka is in another Docker network
+# =====================================================
+# First, create or identify your Kafka network:
+# docker network ls
+# docker network inspect <kafka_network_name>
+
+networks:
+  starrocks-net:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+  
+  # Add reference to external Kafka network
+  kafka-net:
+    external: true
+    name: your_kafka_network_name  # Replace with actual network name
+
+services:
+  fe1:
+    networks:
+      - starrocks-net
+      - kafka-net  # Add Kafka network
+    # ... rest of configuration
+
+  fe2:
+    networks:
+      - starrocks-net
+      - kafka-net
+    # ... rest of configuration
+
+  fe3:
+    networks:
+      - starrocks-net
+      - kafka-net
+    # ... rest of configuration
+
+  cn1:
+    networks:
+      - starrocks-net
+      - kafka-net
+    # ... rest of configuration
+
+  cn2:
+    networks:
+      - starrocks-net
+      - kafka-net
+    # ... rest of configuration
+
+  cn3:
+    networks:
+      - starrocks-net
+      - kafka-net
+    # ... rest of configuration
+
+# =====================================================
+# OPTION 3: Kafka on remote servers (most common in production)
+# =====================================================
+# No docker-compose changes needed!
+# Just use the actual Kafka broker hostnames/IPs in your ROUTINE LOAD statements
+# Example:
+# "kafka_broker_list" = "kafka1.company.com:9092,kafka2.company.com:9092,kafka3.company.com:9092"
+
+# But ensure:
+# 1. Network connectivity: StarRocks containers can reach Kafka brokers
+# 2. Firewall rules allow connections to Kafka ports (default 9092)
+# 3. DNS resolution works (or use IPs directly)
+
+# =====================================================
+# Testing Connectivity
+# =====================================================
+# After updating docker-compose.yml, restart the cluster:
+# docker-compose down
+# docker-compose up -d
+
+# Test connectivity from StarRocks containers:
+# docker exec starrocks-cn1 ping kafka-broker-1
+# docker exec starrocks-cn1 nc -zv kafka-broker-1 9092
+# docker exec starrocks-cn1 telnet kafka-broker-1 9092
+
+# =====================================================
+# Example: Complete Updated Service Definition
+# =====================================================
+# Here's a complete example of how fe1 would look with Kafka connectivity:
+
+services:
+  fe1:
+    image: starrocks/fe-ubuntu:4.0-latest
+    container_name: starrocks-fe1
+    hostname: fe1
+    networks:
+      starrocks-net:
+        ipv4_address: 172.20.0.20
+      kafka-net:  # If using shared Docker network
+    extra_hosts:  # If Kafka is on host or remote
+      - "kafka-broker-1:192.168.1.100"
+      - "kafka-broker-2:192.168.1.101"
+      - "kafka-broker-3:192.168.1.102"
+    environment:
+      - TZ=UTC
+      - HOST_TYPE=FQDN
+    volumes:
+      - fe1-meta:/opt/starrocks/fe/meta
+      - ./fe1.conf:/opt/starrocks/fe/conf/fe.conf
+    ports:
+      - "8031:8030"
+      - "9021:9020"
+      - "9031:9030"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/api/bootstrap"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+
+# =====================================================
+# Advanced: Kafka with Authentication
+# =====================================================
+# If your Kafka requires SASL/SSL authentication:
+# 1. Mount certificate files into containers:
+
+services:
+  cn1:
+    volumes:
+      - cn1-data:/opt/starrocks/cn/storage
+      - ./cn1.conf:/opt/starrocks/cn/conf/cn.conf
+      - ./kafka-certs:/opt/starrocks/kafka-certs:ro  # Add this line
+    # ... rest of configuration
+
+# 2. Use these paths in your ROUTINE LOAD statements:
+# "property.ssl.ca.location" = "/opt/starrocks/kafka-certs/ca-cert.pem"
+# "property.ssl.certificate.location" = "/opt/starrocks/kafka-certs/client-cert.pem"
+# "property.ssl.key.location" = "/opt/starrocks/kafka-certs/client-key.pem"

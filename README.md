@@ -18,6 +18,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 - **[LakeFs-Minio](./LakeFs-Minio)** — LakeFS backed by MinIO (standalone or clustered)
 
 ### Databases
+- **[Starrocks](./Starrocks)** — StarRocks v4 (shared-data) with MinIO, 3 FE + 3 CN cluster
 - **[Postgres](./Postgres)** — PostgreSQL
 - **[Mariadb](./Mariadb)** — MariaDB (with PostgreSQL sidecar)
 - **[ClickHouse](./ClickHouse)** — ClickHouse columnar database
