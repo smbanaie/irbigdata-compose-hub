@@ -18,10 +18,9 @@ downv: .env
 	@echo "===== Docker down -v  ====="
 	docker-compose down -v --remove-orphans
 
-
 start: .env
 	@echo "===== Docker start ====="
-	docker-compose -f ./docker-compose.yml up -d 
+	docker-compose -f ./docker-compose.yml up -d
 
 stop: .env
 	@echo "===== Docker stop ====="
@@ -42,11 +41,11 @@ logs: .env
 
 run: .env
 	@echo "===== Docker run container ====="
-	docker-compose run --rm airflow bash
+	docker-compose run --rm airflow-apiserver bash
 
 exec: .env
 	@echo "===== Docker exec container ====="
-	docker-compose exec airflow bash
+	docker-compose exec airflow-apiserver bash
 
 stats:
 	@echo "===== Docker stats ====="
@@ -54,4 +53,4 @@ stats:
 
 ps:
 	@echo "===== Print state of containers ====="
-	docker-compose -f ./docker-compose-apache.yml ps
+	docker-compose -f ./docker-compose.yml ps

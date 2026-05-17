@@ -5,7 +5,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 ## Services
 
 ### Workflow & Orchestration
-- **[Airflow](./Airflow)** — Apache Airflow with worker support, sample DAGs, and image extension guide
+- **[Airflow](./Airflow)** — Apache Airflow 3.2.1 (CeleryExecutor) with custom image, minio, management UIs
 - **[Druid](./Druid)** — Apache Druid real-time analytics database
 
 ### Messaging & Streaming
