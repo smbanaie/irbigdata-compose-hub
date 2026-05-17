@@ -42,11 +42,11 @@ logs: .env
 
 run: .env
 	@echo "===== Docker run container ====="
-	docker-compose run --rm broker bash
+	docker-compose run --rm kafka-node bash
 
 exec: .env
 	@echo "===== Docker exec container ====="
-	docker-compose exec broker bash
+	docker-compose exec kafka-node bash
 
 stats:
 	@echo "===== Docker stats ====="

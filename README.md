@@ -9,7 +9,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 - **[Druid](./Druid)** — Apache Druid real-time analytics database
 
 ### Messaging & Streaming
-- **[Kafka](./Kafka)** — Apache Kafka (multiple compose variants), Kafka Manager, Zookeeper, JAAS config
+- **[Kafka](./Kafka)** — Apache Kafka 4.2.0 KRaft (no Zookeeper) + Console, KafkaHQ, Kafka-UI (and legacy ZK-based variants)
 - **[Redpanda](./Redpanda)** — Redpanda Kafka-compatible streaming + Console, KafkaHQ, Kafka-UI
 
 ### Storage & Object Store
