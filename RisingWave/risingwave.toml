@@ -1,0 +1,45 @@
+[server]
+# The address that the server binds to.
+# Default: 0.0.0.0:4566 for frontend, 0.0.0.0:5688 for compute, 0.0.0.0:1222 for compactor
+heartbeat_interval_ms = 1000
+max_heartbeat_interval_ms = 60000
+
+[storage]
+# The storage type used by RisingWave.
+# Increase timeouts to prevent write failures
+object_store_request_timeout_ms = 180000  # 3 minutes (was probably 30s default)
+object_store_streaming_upload_timeout_ms = 600000  # 10 minutes
+object_store_upload_part_size = 16777216  # 16MB per part
+object_store_streaming_read_timeout_ms = 180000  # 3 minutes for reads
+# Retry configuration
+object_store_set_atomic_write_dir = false
+max_concurrent_creating_streaming_jobs = 1  # Reduce concurrent writes during MV creation
+
+[storage.s3]
+# S3-compatible storage configuration
+region = "us-east-1"
+access_key = "hummockadmin"  # Should match your MinIO credentials
+secret_access_key = "hummockadmin"  # Should match your MinIO credentials
+endpoint = "http://minio-1:9000"  # Point to your MinIO cluster
+use_ssl = false
+force_path_style = true
+
+[meta]
+# The meta service address.
+# Default: http://0.0.0.0:5690
+
+[streaming]
+# Streaming related configurations
+actor_runtime_worker_threads_num = 8
+enable_jaeger_tracing = false
+# Increase checkpoint timeout to allow more time for S3 writes
+checkpoint_frequency = 10  # Checkpoint every 10 epochs (default is usually 1)
+barrier_interval_ms = 1000  # Keep barrier interval at 1 second
+
+[batch]
+# Batch processing related configurations
+enable_barrier_read = true
+
+[logging]
+# Logging configuration
+level = "info"

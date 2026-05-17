@@ -1,0 +1,74 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+    scrape_interval: 15s
+
+  # RisingWave Meta Nodes
+  - job_name: 'risingwave-meta'
+    static_configs:
+      - targets: 
+          - 'meta-node-0:1250'
+          - 'meta-node-1:1250'
+    scrape_interval: 5s
+
+  # RisingWave Compute Nodes
+  - job_name: 'risingwave-compute'
+    static_configs:
+      - targets:
+          - 'compute-node-0:1222'
+          - 'compute-node-1:1222'
+    scrape_interval: 5s
+
+  # RisingWave Frontend Nodes
+  - job_name: 'risingwave-frontend'
+    static_configs:
+      - targets:
+          - 'frontend-node-0:2222'
+          - 'frontend-node-1:2222'
+    scrape_interval: 5s
+
+  # RisingWave Compactor Nodes
+  - job_name: 'risingwave-compactor'
+    static_configs:
+      - targets:
+          - 'compactor-node-0:1260'
+          - 'compactor-node-1:1260'
+    scrape_interval: 5s
+
+  # Grafana
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    scrape_interval: 15s
+
+  # Redpanda/Kafka
+  - job_name: 'redpanda'
+    static_configs:
+      - targets: ['message-queue:9644']
+    scrape_interval: 15s
+
+  # rustfs Object Storage
+  - job_name: 'rustfs'
+    static_configs:
+      - targets: ['rustfs:9000']
+    scrape_interval: 15s
+
+  # PostgreSQL (via postgres_exporter if added)
+  # - job_name: 'postgres'
+  #   static_configs:
+  #     - targets: 
+  #         - 'postgres-primary:9187'
+  #         - 'postgres-replica:9187'
+  #   scrape_interval: 15s
+
+  # HAProxy
+  # - job_name: 'haproxy'
+  #   static_configs:
+  #     - targets: ['haproxy:8404']
+  #   scrape_interval: 15s

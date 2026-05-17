@@ -15,6 +15,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 
 ### Storage & Object Store
 - **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage
+- **[RustFS](./RustFS)** — RustFS S3-compatible object storage (Rust)
 - **[LakeFS](./LakeFS)** — Standalone LakeFS data lake versioning
 - **[LakeFs-Minio](./LakeFs-Minio)** — LakeFS backed by MinIO (standalone or clustered)
 
