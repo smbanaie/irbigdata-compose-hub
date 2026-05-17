@@ -10,6 +10,7 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 
 ### Messaging & Streaming
 - **[Kafka](./Kafka)** — Apache Kafka (multiple compose variants), Kafka Manager, Zookeeper, JAAS config
+- **[Redpanda](./Redpanda)** — Redpanda Kafka-compatible streaming + Console, KafkaHQ, Kafka-UI
 
 ### Storage & Object Store
 - **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage with Nginx
