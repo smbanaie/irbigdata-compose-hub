@@ -1,64 +1,71 @@
 # irbigdata-compose-hub
 
-A centralized repository of **Docker Compose** files for Big Data engineering services. Spin up data infrastructure locally with minimal configuration.
+A centralized repository of **Docker Compose** files for Big Data engineering services.
 
-## Services
+## All Compose Files
 
-### Workflow & Orchestration
-- **[Airflow](./Airflow)** — Apache Airflow 3.2.1 (CeleryExecutor) with custom image, minio, management UIs
-- **[Druid](./Druid)** — Apache Druid real-time analytics database
-- **[Superset](./Superset)** — Apache Superset with DuckDB (latest + 1.3 variants)
-
-### Visualization & BI
-- **[Grafana](./Grafana)** — Grafana OSS with 3 workshop variants (observability, postgres monitoring, microservices)
-- **[Metabase](./Metabase)** — Metabase BI with DuckDB and environment-configurable setup
-
-### Messaging & Streaming
-- **[Kafka](./Kafka)** — Apache Kafka 4.2.0 KRaft (no Zookeeper) + Console, KafkaHQ, Kafka-UI (and legacy ZK-based variants)
-- **[Redpanda](./Redpanda)** — Redpanda Kafka-compatible streaming + Console, KafkaHQ, Kafka-UI
-- **[RisingWave](./RisingWave)** — RisingWave streaming database
-- **[Redpanda-Connect](./Redpanda-Connect)** — Redpanda Connect stream processing pipeline
-- **[Debezium](./Debezium)** — Change Data Capture (Postgres → Debezium → Redpanda)
-
-### Storage & Object Store
-- **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage (single-node, cluster, cluster-LB)
-- **[RustFS](./RustFS)** — RustFS S3-compatible object storage (Rust)
-- **[LakeFS](./LakeFS)** — Standalone LakeFS data lake versioning
-- **[LakeFs-Minio](./LakeFs-Minio)** — LakeFS backed by MinIO (standalone or clustered)
-
-### Databases
-- **[Starrocks](./Starrocks)** — StarRocks v4 (shared-data) with MinIO, 3 FE + 3 CN cluster
-- **[Postgres](./Postgres)** — PostgreSQL (Northwind + Pagila sample DB variants)
-- **[Mariadb](./Mariadb)** — MariaDB (with PostgreSQL sidecar)
-- **[ClickHouse](./ClickHouse)** — ClickHouse columnar database
-- **[Mongo](./mongo)** — MongoDB with init scripts
-- **[Rredis](./Rredis)** — Redis (in-memory cache)
-
-### Search & Analytics
-- **[EK](./EK)** — Elasticsearch + Kibana (ELK stack) with APM Server, Logstash, and 3-node cluster variant
-- **[Hadoop](./Hadoop)** — Single-node Hadoop (HDFS, YARN, MapReduce) with examples
-- **[Spark](./Spark)** — Apache Spark with Hadoop + Hadoop integration, and Jupyter Lab + MinIO variant
-
-### Lakehouse & Catalog
-- **[Lakehouse](./Lakehouse)** — Iceberg lakehouse with Nessie + MinIO + Dremio (+ Superset workshop)
-- **[Lakekeeper](./Lakekeeper)** — LakeKeeper Iceberg catalog with Jupyter/Spark, MinIO, Postgres, Trino, StarRocks
-
-### Log Processing
-- **[logstash](./logstash)** — *(empty — ready for Logstash configs)*
+| Category | Folder | Compose File | Description |
+|----------|--------|-------------|-------------|
+| Workflow & Orchestration | `Airflow/` | `docker-compose.yml` | Airflow 3.2.1 CeleryExecutor + Redis + Postgres + MinIO |
+|  | `Druid/` | `docker-compose.yml` | Druid real-time analytics (single-server) |
+|  | `Druid/` | `docker-compose-original.yml` | Druid original reference compose |
+|  | `Superset/` | (2 variants) | Superset latest DuckDB / DuckDB 1.3 |
+| Visualization & BI | `Grafana/Step1-Observability/` | `docker-compose.yml` | Grafana + Prometheus + Node Exporter + cAdvisor |
+|  | `Grafana/Step2-Postgres-Monitoring/` | `docker-compose.yml` | Grafana + Postgres + pgAdmin + postgres-exporter |
+|  | `Grafana/Step3-Microservices/` | `docker-compose.yaml` | Grafana + Prometheus + Loki + Tempo + Pyroscope |
+|  | `Metabase/` | (1 compose) | Metabase BI with DuckDB |
+| Messaging & Streaming | `Kafka/` | `docker-compose.yml` | Kafka 4.2.0 KRaft + Console + KafkaHQ + Kafka-UI |
+|  | `Kafka/` | `docker-compose-cluster.yml` | Kafka 4.2.0 3-controller + 3-broker KRaft cluster |
+|  | `Redpanda/` | `docker-compose.yml` | Redpanda + Console + KafkaHQ + Kafka-UI |
+|  | `Redpanda/` | `docker-compose-workshop.yml` | Redpanda + MinIO + MinIO MC workshop |
+|  | `Redpanda/` | `docker-compose-connect.yml` | Redpanda + Console + Redpanda Connect |
+|  | `RisingWave/` | `compose.yml` (rw-single-node-docker) | RisingWave single node |
+|  | `RisingWave/` | `compose-cluster.yml` | RisingWave cluster (FE + CN + Meta + etcd) |
+|  | `Debezium/` | `docker-compose-redpanda-postgres-cdc.yml` | CDC: Postgres → Debezium → Redpanda |
+| Storage & Object Store | `Minio/` | `docker-compose.yml` | MinIO standalone single-node |
+|  | `Minio/` | `docker-compose-cluster.yml` | MinIO 3-node distributed cluster |
+|  | `Minio/` | `docker-compose-cluster-lb.yml` | MinIO 3-node cluster + HAProxy LB |
+|  | `RustFS/` | `docker-compose.yml` | RustFS standalone S3 storage |
+|  | `LakeFS/` | `docker-compose-lake-fs.yml` | LakeFS standalone |
+|  | `LakeFs-Minio/` | `docker-compose-minio.yml` | LakeFS + MinIO standalone |
+|  | `LakeFs-Minio/` | `docker-compose-minio-cluster.yml` | LakeFS + MinIO cluster |
+|  | `LakeFs-Minio/` | `docker-compose-lakefs.yml` | LakeFS + MinIO (alternative) |
+| Databases | `Starrocks/` | `docker-compose.yml` | StarRocks 4.0.5 shared-data cluster + MinIO + HAProxy + Grafana |
+|  | `Postgres/` | `docker-compose.yml` | PostgreSQL (configurable version) + pgAdmin + Northwind |
+|  | `Mariadb/` | `docker-compose-pg-mariadb.yml` | MariaDB + PostgreSQL sidecar |
+|  | `ClickHouse/` | `docker-compose.yml` | ClickHouse columnar database |
+|  | `mongo/` | `docker-compose.yml` | MongoDB with init scripts |
+|  | `Rredis/` | `docker-compose.yml` | Redis cache |
+| Search & Analytics | `EK/` | `docker-compose.yml` | Elasticsearch + Kibana single-node |
+|  | `EK/` | `docker-compose-logstash.yml` | ES + Logstash + Kibana (ELK) |
+|  | `EK/` | `docker-compose-cluster.yml` | ES 3-node cluster + Kibana + APM Server |
+|  | `EK/` | `docker-elk/docker-compose.yml` | ELK build-from-source variant |
+|  | `EK/` | `apm-server-compose.yml` | APM Server standalone companion |
+|  | `Hadoop/single_node/` | `docker-compose.yml` | Hadoop single-node (HDFS + YARN + MR) |
+|  | `Spark/` | `docker-compose.yml` | Spark 3.1.2 + Hadoop + pyspark |
+|  | `Spark/` | `docker-compose-hadoop.yml` | Spark + Hadoop integration |
+|  | `Spark/` | `docker-compose-jupyter-minio.yml` | Spark 4.0.1 + Jupyter Lab + MinIO |
+| Lakehouse & Catalog | `Lakehouse/Intro/` | `docker-compose.yml` | Nessie + MinIO + Dremio lakehouse |
+|  | `Lakehouse/Dremio-Workshop/` | `docker-compose.yml` | Nessie + MinIO + Dremio + Superset workshop |
+|  | `Lakekeeper/v1/` | `compose-lakekeeper.yaml` | LakeKeeper + Jupyter/Spark + MinIO + Postgres + Trino/StarRocks |
+|  | `Lakekeeper/v2/` | `compose-lakekeeper.yaml` | LakeKeeper V2 (alternative mirrors) |
 
 ## Usage
 
-Each directory is self-contained. Navigate into a service folder and run:
+Each compose file is self-contained. Run from the repo root or navigate into the folder:
 
 ```bash
-docker compose up -d
+# From repo root
+docker compose -f Airflow/docker-compose.yml up -d
+
+# Or navigate into folder
+cd Redpanda
+docker compose -f docker-compose-workshop.yml up -d
 ```
 
-Many folders include a `Makefile` with convenience commands (e.g., `make start`, `make stop`, `make env`).
+Many folders include a `Makefile` with convenience commands (e.g., `make start`, `make stop`).
 
 ## Makefiles
-
-Many service folders include a `Makefile` with convenience commands to simplify Docker management.
 
 ### Common commands
 
@@ -66,7 +73,7 @@ Many service folders include a `Makefile` with convenience commands to simplify 
 |---------|-------------|
 | `make up` / `make start` | Start containers in detached mode |
 | `make down` | Stop and remove containers |
-| `make downv` | Stop and remove containers **and** volumes |
+| `make downv` | Stop and remove containers and volumes |
 | `make stop` | Stop containers (without removing) |
 | `make restart` | Down then up |
 | `make logs` | Tail container logs |
@@ -79,18 +86,11 @@ Many service folders include a `Makefile` with convenience commands to simplify 
 
 ### Using Make on Windows
 
-`make` is not available in PowerShell or Cmd by default. You have several options:
+`make` is not available in PowerShell or Cmd by default. Options:
 
-1. **Git Bash** (recommended) — Git for Windows ships with a Bash environment that includes `make`. Use its terminal instead of PowerShell/Cmd, or run `& "C:\Program Files\Git\bin\bash.exe" -c "make <command>"` from PowerShell.
-
-2. **Chocolatey** — Install make globally:
-   ```powershell
-   choco install make
-   ```
-
-3. **GnuWin32** — Download `make` from GnuWin32 and add it to your `PATH`.
-
-4. **WSL** — Run `make` inside Windows Subsystem for Linux.
+1. **Git Bash** (recommended) — Use the bash terminal from Git for Windows, or run `& "C:\Program Files\Git\bin\bash.exe" -c "make <command>"` from PowerShell.
+2. **Chocolatey** — `choco install make`
+3. **WSL** — Run `make` inside Windows Subsystem for Linux.
 
 ## Requirements
 

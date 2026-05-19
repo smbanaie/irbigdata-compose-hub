@@ -24,24 +24,14 @@ pgAdmin runs under the `pgadmin` profile — start it with `--profile pgadmin`.
 
 pgAdmin credentials are hardcoded: email `admin@admin.com`, password `pgadmin123`.
 
-## Variants
-
-| Compose | Sample Data | Description |
-|---------|------------|-------------|
-| `docker-compose.yml` | Northwind | Default setup with `postgres-init/northwind.sql` |
-| `docker-compose-pagila.yml` | Pagila | DVD rental store sample database |
-
 ## Usage
 
 ```bash
-# Start PostgreSQL with Northwind
+# Start PostgreSQL
 docker compose -f docker-compose.yml up -d
 
-# Start PostgreSQL + pgAdmin (Northwind)
+# Start PostgreSQL + pgAdmin
 docker compose -f docker-compose.yml --profile pgadmin up -d
-
-# Start PostgreSQL with Pagila
-docker compose -f docker-compose-pagila.yml up -d
 
 # Or with Makefile
 make start
