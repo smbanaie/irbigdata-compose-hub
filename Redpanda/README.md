@@ -2,7 +2,14 @@
 
 Kafka-compatible event streaming platform with management UIs.
 
-## Services
+## Variants
+
+| Compose | Description |
+|---------|-------------|
+| `docker-compose.yml` | Redpanda broker + Console + KafkaHQ + Kafka-UI |
+| `docker-compose-workshop.yml` | Redpanda + MinIO + MinIO MC + Console (workshop setup) |
+
+## Services (default)
 
 | Service | Container | Image | Port |
 |---------|-----------|-------|------|
@@ -22,6 +29,9 @@ Kafka-compatible event streaming platform with management UIs.
 ```bash
 # Start Redpanda + all management UIs
 docker compose -f docker-compose.yml up -d
+
+# Start Workshop variant (Redpanda + MinIO)
+docker compose -f docker-compose-workshop.yml up -d
 
 # Or with Makefile
 make start

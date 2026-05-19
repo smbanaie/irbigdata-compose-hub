@@ -1,0 +1,65 @@
+version: '3.9'
+
+volumes:
+  grafana_data: {}
+
+networks:
+  grafana:
+
+services: 
+  grafana: 
+    container_name: grafana
+    image: docker.arvancloud.ir/grafana/grafana:11.0.0  
+    ports:
+      - '3000:3000'
+    environment:
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_USERS_ALLOW_ORG_CREATE=false
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Read Only Editor 
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel,marcusolsson-gantt-panel,grafana-worldmap-panel,briangann-gauge-panel,natel-plotly-panel
+    volumes:
+      - ./data/logs:/var/log/grafana
+      - ./data/provisioning:/etc/grafana/provisioning
+      - ./data/plugins:/var/lib/grafana/plugins
+      - grafana_data:/var/lib/grafana
+    restart: unless-stopped
+    networks:
+      - grafana
+
+  prometheus:
+    image: docker.arvancloud.ir/prom/prometheus:v2.49.0
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+    ports:
+      - 9090:9090
+    networks:
+      - grafana
+
+  postgres:
+    container_name: postgres
+    hostname: postgres
+    image: docker.arvancloud.ir/library/postgres:16-alpine
+    volumes:
+      - ./data/db_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=123456
+      - POSTGRES_DB=testdb
+    ports:
+      - 5432:5432
+    networks:
+        - grafana
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://postgres:123456@postgres:5432/testdb?sslmode=disable
+    ports:
+      - 9187:9187
+    networks:
+      - grafana

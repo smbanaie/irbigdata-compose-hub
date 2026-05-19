@@ -7,30 +7,41 @@ A centralized repository of **Docker Compose** files for Big Data engineering se
 ### Workflow & Orchestration
 - **[Airflow](./Airflow)** — Apache Airflow 3.2.1 (CeleryExecutor) with custom image, minio, management UIs
 - **[Druid](./Druid)** — Apache Druid real-time analytics database
+- **[Superset](./Superset)** — Apache Superset with DuckDB (latest + 1.3 variants)
+
+### Visualization & BI
+- **[Grafana](./Grafana)** — Grafana OSS with 3 workshop variants (observability, postgres monitoring, microservices)
+- **[Metabase](./Metabase)** — Metabase BI with DuckDB and environment-configurable setup
 
 ### Messaging & Streaming
 - **[Kafka](./Kafka)** — Apache Kafka 4.2.0 KRaft (no Zookeeper) + Console, KafkaHQ, Kafka-UI (and legacy ZK-based variants)
 - **[Redpanda](./Redpanda)** — Redpanda Kafka-compatible streaming + Console, KafkaHQ, Kafka-UI
 - **[RisingWave](./RisingWave)** — RisingWave streaming database
+- **[Redpanda-Connect](./Redpanda-Connect)** — Redpanda Connect stream processing pipeline
+- **[Debezium](./Debezium)** — Change Data Capture (Postgres → Debezium → Redpanda)
 
 ### Storage & Object Store
-- **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage
+- **[Minio](./Minio)** — Standalone MinIO S3-compatible object storage (single-node, cluster, cluster-LB)
 - **[RustFS](./RustFS)** — RustFS S3-compatible object storage (Rust)
 - **[LakeFS](./LakeFS)** — Standalone LakeFS data lake versioning
 - **[LakeFs-Minio](./LakeFs-Minio)** — LakeFS backed by MinIO (standalone or clustered)
 
 ### Databases
 - **[Starrocks](./Starrocks)** — StarRocks v4 (shared-data) with MinIO, 3 FE + 3 CN cluster
-- **[Postgres](./Postgres)** — PostgreSQL
+- **[Postgres](./Postgres)** — PostgreSQL (Northwind + Pagila sample DB variants)
 - **[Mariadb](./Mariadb)** — MariaDB (with PostgreSQL sidecar)
 - **[ClickHouse](./ClickHouse)** — ClickHouse columnar database
 - **[Mongo](./mongo)** — MongoDB with init scripts
 - **[Rredis](./Rredis)** — Redis (in-memory cache)
 
 ### Search & Analytics
-- **[EK](./EK)** — Elasticsearch + Kibana (ELK stack) with APM Server, Logstash, Metricbeat, and other extensions
+- **[EK](./EK)** — Elasticsearch + Kibana (ELK stack) with APM Server, Logstash, and 3-node cluster variant
 - **[Hadoop](./Hadoop)** — Single-node Hadoop (HDFS, YARN, MapReduce) with examples
-- **[Spark](./Spark)** — Apache Spark with Hadoop integration
+- **[Spark](./Spark)** — Apache Spark with Hadoop + Hadoop integration, and Jupyter Lab + MinIO variant
+
+### Lakehouse & Catalog
+- **[Lakehouse](./Lakehouse)** — Iceberg lakehouse with Nessie + MinIO + Dremio (+ Superset workshop)
+- **[Lakekeeper](./Lakekeeper)** — LakeKeeper Iceberg catalog with Jupyter/Spark, MinIO, Postgres, Trino, StarRocks
 
 ### Log Processing
 - **[logstash](./logstash)** — *(empty — ready for Logstash configs)*

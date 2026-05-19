@@ -1,0 +1,74 @@
+version: "3"
+
+services:
+  nessie:
+    image: docker.arvancloud.ir/projectnessie/nessie:latest
+    container_name: nessie
+    networks:
+      dremio-file-ingestion:
+    ports:
+      - 19120:19120
+
+  minio:
+    image: docker.arvancloud.ir/minio/minio:latest
+    container_name: minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+      - MINIO_DOMAIN=storage
+      - MINIO_REGION_NAME=us-east-1
+      - MINIO_REGION=us-east-1
+    networks:
+      dremio-file-ingestion:
+    ports:
+      - 9001:9001
+      - 9000:9000
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  minio-setup:
+    image: docker.arvancloud.ir/minio/mc:latest
+    depends_on:
+      - minio
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    volumes:
+      - ./sampledata:/tmp/data
+    entrypoint: >
+      /bin/sh -c "
+      echo 'Waiting for MinIO to start...' &&
+      /bin/sleep 10 &&
+      mc alias set minio http://minio:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb minio/warehouse &&
+      mc mb minio/datalakehouse &&
+      mc mb minio/sampledata &&
+      mc cp --recursive /tmp/data/* minio/sampledata/ &&
+      echo 'Buckets created and data loaded.'"
+    networks:
+      dremio-file-ingestion:
+
+  dremio:
+    image: docker.arvancloud.ir/dremio/dremio-oss
+    container_name: dremio
+    ports:
+      - 9047:9047
+      - 31010:31010
+      - 32010:32010
+      - 45678:45678
+    environment:
+      - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    depends_on:
+      - minio-setup
+    networks:
+      dremio-file-ingestion:
+
+  superset:
+    image: docker.arvancloud.ir/alexmerced/dremio-superset
+    container_name: superset
+    networks:
+      dremio-file-ingestion:
+    ports:
+      - 8088:8088
+
+networks:
+  dremio-file-ingestion:

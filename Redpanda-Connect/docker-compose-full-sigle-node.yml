@@ -1,0 +1,56 @@
+services:
+  redpanda:
+    container_name: redpanda
+    hostname: redpanda
+    networks:
+      - redpanda_network
+    image: docker.arvancloud.ir/redpandadata/redpanda:latest
+    command:
+      - redpanda
+      - start
+      - --smp "1"
+      - --memory "1G"
+      - --reserve-memory "0M"
+      - --overprovisioned
+      - --node-id "0"
+      - --check=false
+      - --rpc-addr "0.0.0.0:33145"
+      - --advertise-rpc-addr "redpanda:33145"
+      - --kafka-addr "0.0.0.0:3092"
+      - --advertise-kafka-addr "redpanda:3092"
+      - --pandaproxy-addr "0.0.0.0:8082"
+      - --advertise-pandaproxy-addr "redpanda:8082"
+    ports:
+      - "9644:9644"
+      - "8082:8082"
+    environment:
+      KAFKA_ADVERTISED_LISTENERS: "GENERAL://redpanda:3092"
+      KAFKA_LISTENERS: "GENERAL://0.0.0.0:3092"
+
+  redpanda_console:
+    image: docker.arvancloud.ir/redpandadata/console:latest
+    container_name: redpanda_console
+    ports:
+      - "9100:8080"
+    environment:
+      KAFKA_BROKERS: "redpanda:3092"
+    networks:
+      - redpanda_network
+    depends_on:
+      - redpanda
+
+  redpanda_connect:
+    image: docker.arvancloud.ir/redpandadata/connect:latest
+    container_name: redpanda_connect
+    command: run --chilled
+    volumes:
+      - ./connect-config.yaml:/connect.yaml
+      - ./data:/data
+    networks:
+      - redpanda_network
+    depends_on:
+      - redpanda
+
+networks:
+  redpanda_network:
+    name: redpanda_network

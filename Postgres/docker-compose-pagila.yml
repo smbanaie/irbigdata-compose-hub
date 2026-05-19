@@ -1,0 +1,41 @@
+services:
+  postgres:
+    container_name: ${CONTAINER_NAME:-postgres}
+    hostname: ${CONTAINER_NAME:-postgres}
+    image: docker.arvancloud.ir/library/postgres:${PG_VERSION:-18}
+    volumes:
+      - ./pagila_data:/var/lib/postgresql/data
+      - ./pagila/pagila-schema.sql:/docker-entrypoint-initdb.d/1-pagila-schema.sql
+      - ./pagila/pagila-data.sql:/docker-entrypoint-initdb.d/2-pagila-data.sql
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASS:-postgres123}
+      - POSTGRES_USER=${DB_USER:-postgres}
+      - POSTGRES_DB=${DB_NAME:-pagila}
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    networks:
+      - services
+    ports:
+      - ${PORT:-5434}:5432
+    restart: always
+
+  pgadmin:
+    container_name: pgadmin4
+    hostname: pgadmin4
+    image: docker.arvancloud.ir/dpage/pgadmin4
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: pgadmin123
+    volumes:
+      - pgadmin-data:/var/lib/pgadmin
+    ports:
+      - "5050:80"
+    networks:
+      - services
+
+networks:
+  services:
+    name: ${APP_NAME:-sepahram}_network
+
+volumes:
+  pgadmin-data:

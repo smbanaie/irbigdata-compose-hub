@@ -1,0 +1,83 @@
+services:
+  minio:
+    container_name: minio
+    environment:
+      MINIO_ROOT_USER: miniouser
+      MINIO_ROOT_PASSWORD: miniopassword
+    image: docker.arvancloud.ir/minio/minio:latest
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    entrypoint: sh
+    command: '-c ''mkdir -p /minio_data/starrocks && minio server /minio_data --console-address ":9001"'''
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - services
+
+  minio_mc:
+    image: docker.arvancloud.ir/minio/mc:latest
+    entrypoint:
+      - sh
+      - -c
+      - |
+        until mc ls minio > /dev/null 2>&1; do
+          sleep 0.5
+        done
+        mc alias set myminio http://minio:9000 miniouser miniopassword
+        mc admin user svcacct add --access-key AAAAAAAAAAAAAAAAAAAA \
+        --secret-key BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB \
+        myminio \
+        miniouser
+    depends_on:
+      - minio
+    networks:
+      - services
+
+  redpanda:
+    container_name: redpanda
+    image: docker.arvancloud.ir/vectorized/redpanda:latest
+    command:
+      - redpanda
+      - start
+      - --smp 1
+      - --memory 1G
+      - --kafka-addr internal://0.0.0.0:29092,external://0.0.0.0:9092
+      - --advertise-kafka-addr internal://redpanda:29092,external://localhost:9092
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "localhost:9644/v1/status/ready" ]
+      start_period: 5s
+      interval: 3s
+    networks:
+      - services
+
+  console:
+    container_name: redpanda-console
+    image: docker.arvancloud.ir/redpandadata/console:latest
+    entrypoint: /bin/sh
+    command: -c 'echo "$$CONSOLE_CONFIG_FILE" > /tmp/config.yml; /app/console'
+    environment:
+      CONFIG_FILEPATH: /tmp/config.yml
+      CONSOLE_CONFIG_FILE: |
+        kafka:
+          brokers: ["redpanda:29092"]
+        redpanda:
+          adminApi:
+            enabled: true
+            urls: ["http://redpanda:9644"]
+    ports:
+      - 9100:8080
+    depends_on:
+      - redpanda
+    networks:
+      - services
+
+networks:
+  services:
+    name: ${APP_NAME:-sepahram}_network
