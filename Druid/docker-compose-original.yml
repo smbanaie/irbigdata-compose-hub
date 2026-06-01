@@ -38,6 +38,7 @@ services:
       - POSTGRES_PASSWORD=odiF2t11#
       - POSTGRES_USER=druid
       - POSTGRES_DB=druid
+      - PGDATA=/var/lib/postgresql/data
 
   # Need 3.5 or later for container nodes
   zookeeper:

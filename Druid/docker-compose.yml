@@ -39,6 +39,7 @@ services:
       - POSTGRES_PASSWORD=druid
       - POSTGRES_USER=druid
       - POSTGRES_DB=druid
+      - PGDATA=/var/lib/postgresql/data
     networks:
       - services
     ports:
