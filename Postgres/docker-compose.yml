@@ -4,13 +4,14 @@ services:
     hostname: postgres
     image: docker.devneeds.ir/library/postgres:${PG_VERSION:-18}
     volumes:
-      - ./db_data:/var/lib/postgresql
+      - ./db_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_PASSWORD=${PG_PASS:-postgres123}
       - POSTGRES_USER=${PG_USER:-postgres}
       - POSTGRES_DB=${PG_DB:-sepahram}
       - POSTGRES_HOST_AUTH_METHOD=${PG_AUTH:-trust}
+      - PGDATA=/var/lib/postgresql/data
     networks:
       - services
     ports:
@@ -35,7 +36,6 @@ services:
       - services
 
 volumes:
-  db_data:
   pgadmin_data:
 
 networks:

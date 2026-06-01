@@ -41,6 +41,6 @@ make start
 
 | Volume | Path (container) | Purpose |
 |--------|------------------|---------|
-| `./db_data` | `/var/lib/postgresql` | Database files |
+| `./db_data` | `/var/lib/postgresql/data` | Database files (PGDATA) |
 | `./postgres-init/` | `/docker-entrypoint-initdb.d` | SQL init scripts (run once at first start) |
 | `pgadmin_data` (named) | `/var/lib/pgadmin` | pgAdmin session data |
