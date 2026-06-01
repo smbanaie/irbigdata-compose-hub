@@ -1,0 +1,76 @@
+services:
+  primary:
+    image: docker.arvancloud.ir/postgres:18
+    container_name: pg-primary
+    environment:
+      POSTGRES_PASSWORD: password123
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./primary_data:/var/lib/postgresql/data
+      - ./archive:/archive
+    command: |
+      postgres
+      -c wal_level=replica
+      -c max_wal_senders=10
+      -c max_replication_slots=10
+      -c wal_keep_size=2GB
+      -c hot_standby=on
+      -c hot_standby_feedback=on
+      -c wal_log_hints=on
+      -c archive_mode=on
+      -c archive_command='test ! -f /archive/%f && cp %p /archive/%f'
+      -c synchronous_commit=on
+      -c synchronous_standby_names='FIRST 1 (standby_sync)'
+    networks:
+      - pg-net
+
+  standby_sync:
+    image: docker.arvancloud.ir/postgres:18
+    container_name: pg-standby-sync
+    environment:
+      POSTGRES_PASSWORD: password123
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./standby_sync_data:/var/lib/postgresql/data
+    depends_on:
+      - primary
+    networks:
+      - pg-net
+
+  standby_async:
+    image: docker.arvancloud.ir/postgres:18
+    container_name: pg-standby-async
+    environment:
+      POSTGRES_PASSWORD: password123
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    volumes:
+      - ./standby_async_data:/var/lib/postgresql/data
+    depends_on:
+      - primary
+    networks:
+      - pg-net
+
+  standby_cascade:
+    image: docker.arvancloud.ir/postgres:18
+    container_name: pg-standby-cascade
+    profiles: ["cascade"]
+    environment:
+      POSTGRES_PASSWORD: password123
+      PGDATA: /var/lib/postgresql/data
+    ports:
+      - "5435:5432"
+    volumes:
+      - ./standby_cascade_data:/var/lib/postgresql/data
+    depends_on:
+      - standby_sync
+    networks:
+      - pg-net
+
+networks:
+  pg-net: {}
