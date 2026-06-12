@@ -1,0 +1,30 @@
+services:
+  librefs:
+    build:
+      context: ../../libreFS
+      dockerfile: Dockerfile.release
+    container_name: librefs
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: server /data --console-address ":9001"
+    volumes:
+      - librefs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - sepahram_net
+
+volumes:
+  librefs_data:
+
+networks:
+  sepahram_net:
+    name: ${APP_NAME:-sepahram}_network
+    external: true

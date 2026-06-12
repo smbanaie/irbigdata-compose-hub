@@ -2,6 +2,8 @@
 
 S3-compatible object storage server written in Rust.
 
+> Part of the **storage/** folder — see also [MinIO](../Minio/) and [libreFS](../librefs/).
+
 ## Services
 
 | Service | Container | Image | Ports |

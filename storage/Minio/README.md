@@ -2,6 +2,8 @@
 
 MinIO S3-compatible object storage. Three compose variants:
 
+> Part of the **storage/** folder — see also [RustFS](../rustfs/) and [libreFS](../librefs/).
+
 - **`docker-compose.yml`** — single-node with init container (minio_mc)
 - **`docker-compose-cluster.yml`** — 3-node distributed cluster
 - **`docker-compose-cluster-lb.yml`** — 3-node distributed cluster + HAProxy load balancer
