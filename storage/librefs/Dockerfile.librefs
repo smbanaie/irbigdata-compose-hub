@@ -1,0 +1,14 @@
+FROM docker.arvancloud.ir/golang:1.26-alpine AS builder
+RUN apk add --no-cache git
+ADD https://github.com/libreFS/libreFS/archive/refs/heads/master.tar.gz /src.tar.gz
+RUN tar -xzf /src.tar.gz -C / && mv /libreFS-master /src
+WORKDIR /src
+ENV GOPROXY=https://go.devneeds.ir,direct
+ENV GOSUMDB=off
+RUN CGO_ENABLED=0 go build -o /librefs .
+
+FROM docker.arvancloud.ir/debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /librefs /usr/local/bin/librefs
+EXPOSE 9000 9001
+ENTRYPOINT ["librefs"]

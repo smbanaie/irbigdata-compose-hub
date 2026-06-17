@@ -1,0 +1,99 @@
+services:
+  master:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-master
+    command: master -ip=master -port=9333 -defaultReplication=001
+    ports:
+      - "9333:9333"
+    networks:
+      - seaweedfs-net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:9333/cluster/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  volume1:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume1
+    command: volume -ip=volume1 -mserver=master:9333 -port=8080 -dir=/data -max=0
+    volumes:
+      - ./data-volume1:/data
+    networks:
+      - seaweedfs-net
+    depends_on:
+      master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://volume1:8080/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  volume2:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume2
+    command: volume -ip=volume2 -mserver=master:9333 -port=8080 -dir=/data -max=0
+    volumes:
+      - ./data-volume2:/data
+    networks:
+      - seaweedfs-net
+    depends_on:
+      master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://volume2:8080/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  volume3:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-volume3
+    command: volume -ip=volume3 -mserver=master:9333 -port=8080 -dir=/data -max=0
+    volumes:
+      - ./data-volume3:/data
+    networks:
+      - seaweedfs-net
+    depends_on:
+      master:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://volume3:8080/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-filer
+    command: filer -ip=filer -master=master:9333 -port=8888
+    ports:
+      - "8888:8888"
+    networks:
+      - seaweedfs-net
+    depends_on:
+      master:
+        condition: service_healthy
+      volume1:
+        condition: service_healthy
+      volume2:
+        condition: service_healthy
+      volume3:
+        condition: service_healthy
+
+  s3:
+    image: chrislusf/seaweedfs:latest
+    container_name: seaweedfs-s3
+    command: s3 -ip=s3 -port=8333 -filer=filer:8888 -concurrentFileUploadLimit=100 -concurrentUploadLimitMB=1024
+    ports:
+      - "8333:8333"
+    networks:
+      - seaweedfs-net
+    depends_on:
+      filer:
+        condition: service_started
+
+networks:
+  seaweedfs-net:
+    driver: bridge

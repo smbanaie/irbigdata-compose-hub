@@ -1,8 +1,9 @@
 services:
   librefs:
     build:
-      context: ../../libreFS
-      dockerfile: Dockerfile.release
+      context: .
+      dockerfile: Dockerfile.librefs
+    image: librefs:local
     container_name: librefs
     ports:
       - "9000:9000"

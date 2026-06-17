@@ -6,15 +6,16 @@ Community-maintained S3-compatible object storage server, forked from MinIO.
 
 **GitHub:** https://github.com/libreFS/libreFS
 
-## Quick Start
+## Build & Run
+
+A standalone `Dockerfile.librefs` is included — no need to clone the libreFS repo separately.
 
 ```bash
-# Clone and build
-git clone https://github.com/libreFS/libreFS.git
-docker build -t librefs:latest libreFS/Dockerfile.release
+# Build the image (downloads libreFS source from GitHub)
+docker build -f Dockerfile.librefs -t librefs:local .
 
-# Run
-docker compose -f docker-compose.yml up -d
+# Start the container
+docker compose up -d
 ```
 
 Default credentials: `minioadmin` / `minioadmin`

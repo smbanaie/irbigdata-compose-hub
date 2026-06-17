@@ -1,0 +1,56 @@
+# RustFS 3-Node Cluster
+services:
+  rustfs-1:
+    image: docker.arvancloud.ir/rustfs/rustfs:latest
+    container_name: rustfs-1
+    command: server /data --console-address ":9001"
+    ports:
+      - "9001:9001"
+      - "9000:9000"
+    environment:
+      - RUSTFS_SERVERS=rustfs-1,rustfs-2,rustfs-3
+    volumes:
+      - ./data-rustfs/node1:/data
+    networks:
+      - rustfs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rustfs-2:
+    image: docker.arvancloud.ir/rustfs/rustfs:latest
+    container_name: rustfs-2
+    command: server /data
+    environment:
+      - RUSTFS_SERVERS=rustfs-1,rustfs-2,rustfs-3
+    volumes:
+      - ./data-rustfs/node2:/data
+    networks:
+      - rustfs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rustfs-3:
+    image: docker.arvancloud.ir/rustfs/rustfs:latest
+    container_name: rustfs-3
+    command: server /data
+    environment:
+      - RUSTFS_SERVERS=rustfs-1,rustfs-2,rustfs-3
+    volumes:
+      - ./data-rustfs/node3:/data
+    networks:
+      - rustfs-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  rustfs-net:
+    driver: bridge
