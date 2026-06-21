@@ -88,6 +88,25 @@ Per-user quotas go in `users.d/`:
 </clickhouse>
 ```
 
+## Default User
+
+With `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` (our default):
+
+| Setting | Value |
+|---------|-------|
+| Username | `default` |
+| Password | *(empty)* |
+| Access | `access_management=1` — can create users, roles, grants via SQL |
+| Network | `::/0` (all interfaces) |
+
+Connect without a password and set one via SQL:
+
+```sql
+ALTER USER default IDENTIFIED BY 'new_password';
+```
+
+To switch to the traditional password model (password set via env var at container start), remove `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1` from the compose file.
+
 ## .env File
 
 Create a `.env` in this directory (do not commit) to set passwords via SQL on first start, or remove `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` from the compose and set:
