@@ -13,21 +13,21 @@ docker compose up -d
 
 # Verify
 docker exec -it clickhouse-server clickhouse-client \
-  --password clickhouse123 --query "SELECT version()"
+  --query "SELECT version()"
 ```
 
 ## Services
 
 | Service | Container | Image | Ports |
 |---------|-----------|-------|-------|
-| **clickhouse** | `clickhouse-server` | `clickhouse/clickhouse-server:26.5` | `8123` (HTTP), `9000` (native) |
+| **clickhouse** | `clickhouse-server` | `docker.arvancloud.ir/clickhouse/clickhouse-server:26.5` | `8123` (HTTP), `9000` (native) |
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CLICKHOUSE_VERSION` | `26.5` | ClickHouse image tag |
-| `CLICKHOUSE_PASSWORD` | `clickhouse123` | Default user password |
+| `CLICKHOUSE_PASSWORD` | *(empty)* | Default user password. Requires `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` to be removed for this to take effect |
 | `CH_HTTP_PORT` | `8123` | HTTP interface port |
 | `CH_NATIVE_PORT` | `9000` | Native TCP protocol port |
 | `CH_CPU_LIMIT` | `4` | CPU limit |
@@ -90,7 +90,7 @@ Per-user quotas go in `users.d/`:
 
 ## .env File
 
-Create a `.env` in this directory (do not commit):
+Create a `.env` in this directory (do not commit) to set passwords via SQL on first start, or remove `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` from the compose and set:
 
 ```ini
 CLICKHOUSE_PASSWORD=your_strong_password
@@ -99,12 +99,12 @@ CLICKHOUSE_PASSWORD=your_strong_password
 ## CLI Commands
 
 ```bash
-# Connect with client
-docker exec -it clickhouse-server clickhouse-client --password clickhouse123
+# Connect with client (no password when ACCESS_MANAGEMENT=1)
+docker exec -it clickhouse-server clickhouse-client
 
 # Run query directly
-docker exec -it clickhouse-server clickhouse-client \
-  --password clickhouse123 --query "SHOW DATABASES"
+docker exec clickhouse-server clickhouse-client \
+  --query "SHOW DATABASES"
 
 # Check resource usage
 docker stats clickhouse-server

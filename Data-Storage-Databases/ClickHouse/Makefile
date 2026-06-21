@@ -2,42 +2,42 @@
 
 all: restart logs
 
-up: .env
+up:
 	@echo "===== Docker up ====="
-	docker-compose up
+	docker compose up
 
-down: .env
+down:
 	@echo "===== Docker down ====="
-	docker-compose down --remove-orphans
+	docker compose down --remove-orphans
 
-start: .env
+start:
 	@echo "===== Docker start ====="
-	docker-compose up -d
+	docker compose up -d
 
-stop: .env
+stop:
 	@echo "===== Docker stop ====="
-	docker-compose stop
+	docker compose stop
 
-restart: .env
+restart:
 	@echo "===== Docker restart ====="
 	make down
 	make start
 
 remove: stop
 	@echo "===== Remove containers ====="
-	docker-compose rm -f
+	docker compose rm -f
 
-logs: .env
+logs:
 	@echo "===== Docker logs ====="
-	docker-compose logs -f
+	docker compose logs -f
 
-run: .env
+run:
 	@echo "===== Docker run container ====="
-	docker-compose run --rm ch_server bash
+	docker compose run --rm clickhouse-server bash
 
-exec: .env
+exec:
 	@echo "===== Docker exec container ====="
-	docker-compose exec clickhouse-server bash
+	docker compose exec clickhouse-server bash
 
 stats:
 	@echo "===== Docker stats ====="
@@ -45,4 +45,4 @@ stats:
 
 ps:
 	@echo "===== Print state of containers ====="
-	docker-compose ps
+	docker compose ps
