@@ -129,9 +129,35 @@ docker exec clickhouse-server clickhouse-client \
 docker stats clickhouse-server
 ```
 
+## Remote Connections
+
+By default, ClickHouse only listens on localhost inside the container. The `config.d/listen.xml` override enables listening on all interfaces (`0.0.0.0`), allowing remote connections.
+
+Connect from a remote server using the host IP:
+
+```bash
+# Native protocol (port 9000)
+clickhouse-client --host <host-ip> --port 9000
+
+# HTTP interface (port 8123)
+curl "http://<host-ip>:8123/?query=SELECT+version()"
+```
+
+**Requirements:**
+- The host firewall must allow inbound traffic on ports `8123`/`9000`
+- Docker must expose these ports (already configured in the compose file)
+
+## Security
+
+- Do not expose ports `8123`/`9000` directly to the public internet without a reverse proxy and TLS
+- Default user has an empty password and full admin rights. Set a password via SQL for any remote-facing deployment:
+  ```sql
+  ALTER USER default IDENTIFIED BY 'your_strong_password';
+  ```
+- Change the password in the compose file by removing `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1` and setting `CLICKHOUSE_PASSWORD`
+
 ## Production Notes
 
 - **Backup**: Use `clickhouse-backup` or `ALTER TABLE ... FREEZE` with S3-compatible storage
 - **High Availability**: This is a single-node setup. For HA, deploy a replicated cluster with ClickHouse Keeper across multiple nodes
-- **Security**: Do not expose ports `8123`/`9000` to the public internet without a reverse proxy and TLS
 - **Monitoring**: ClickHouse exposes a built-in Prometheus endpoint at `http://localhost:8123/metrics`
