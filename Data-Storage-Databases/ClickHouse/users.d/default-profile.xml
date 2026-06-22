@@ -1,0 +1,9 @@
+<clickhouse>
+    <profiles>
+        <default>
+            <max_memory_usage>10000000000</max_memory_usage>
+            <max_execution_time>300</max_execution_time>
+            <load_balancing>random</load_balancing>
+        </default>
+    </profiles>
+</clickhouse>

@@ -1,16 +1,16 @@
 services:
   clickhouse:
     image: docker.arvancloud.ir/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.5}
-    container_name: clickhouse-server
-    hostname: clickhouse-server
+    container_name: clickhouse-26.5-jammy
+    hostname: clickhouse-26.5-jammy
     ports:
       - "${CH_HTTP_PORT:-8123}:8123"
       - "${CH_NATIVE_PORT:-9000}:9000"
     environment:
-      CLICKHOUSE_DEFAULT_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickhouse123}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-clickh0use@123}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-forex}
       CLICKHOUSE_DISABLE_TELEMETRY: 1
-      CLICKHOUSE_ENABLE_ALL_FEATURES: 1
     volumes:
       - clickhouse_data:/var/lib/clickhouse
       - clickhouse_logs:/var/log/clickhouse-server

@@ -1,0 +1,122 @@
+services:
+  chnode1:
+    image: docker.arvancloud.ir/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.5}
+    container_name: chnode1
+    hostname: chnode1
+    ports:
+      - "${CH1_HTTP_PORT:-8123}:8123"
+      - "${CH1_NATIVE_PORT:-9000}:9000"
+      - "${CH1_KEEPER_PORT:-9181}:9181"
+      - "${CH1_INTERSERVER_PORT:-9234}:9234"
+    volumes:
+      - chnode1_data:/var/lib/clickhouse
+      - ./logs/logs_1:/var/log/clickhouse-server
+      - ./configs/config1:/etc/clickhouse-server/config.d
+    cap_add:
+      - SYS_NICE
+      - NET_ADMIN
+      - IPC_LOCK
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    deploy:
+      resources:
+        limits:
+          memory: ${CH_MEM_LIMIT:-4G}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - clickhouse_cluster
+    restart: unless-stopped
+
+  chnode2:
+    image: docker.arvancloud.ir/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.5}
+    container_name: chnode2
+    hostname: chnode2
+    ports:
+      - "${CH2_HTTP_PORT:-8124}:8123"
+      - "${CH2_NATIVE_PORT:-9001}:9000"
+      - "${CH2_KEEPER_PORT:-9182}:9181"
+      - "${CH2_INTERSERVER_PORT:-9235}:9234"
+    volumes:
+      - chnode2_data:/var/lib/clickhouse
+      - ./logs/logs_2:/var/log/clickhouse-server
+      - ./configs/config2:/etc/clickhouse-server/config.d
+    cap_add:
+      - SYS_NICE
+      - NET_ADMIN
+      - IPC_LOCK
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    deploy:
+      resources:
+        limits:
+          memory: ${CH_MEM_LIMIT:-4G}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - clickhouse_cluster
+    depends_on:
+      chnode1:
+        condition: service_healthy
+    restart: unless-stopped
+
+  chnode3:
+    image: docker.arvancloud.ir/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-26.5}
+    container_name: chnode3
+    hostname: chnode3
+    ports:
+      - "${CH3_HTTP_PORT:-8125}:8123"
+      - "${CH3_NATIVE_PORT:-9002}:9000"
+      - "${CH3_KEEPER_PORT:-9183}:9181"
+      - "${CH3_INTERSERVER_PORT:-9236}:9234"
+    volumes:
+      - chnode3_data:/var/lib/clickhouse
+      - ./logs/logs_3:/var/log/clickhouse-server
+      - ./configs/config3:/etc/clickhouse-server/config.d
+    cap_add:
+      - SYS_NICE
+      - NET_ADMIN
+      - IPC_LOCK
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    deploy:
+      resources:
+        limits:
+          memory: ${CH_MEM_LIMIT:-4G}
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - clickhouse_cluster
+    depends_on:
+      chnode1:
+        condition: service_healthy
+      chnode2:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  chnode1_data:
+  chnode2_data:
+  chnode3_data:
+
+networks:
+  clickhouse_cluster:
+    driver: bridge

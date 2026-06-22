@@ -1,33 +1,30 @@
 # ClickHouse
 
-Production-ready ClickHouse 26.5 single-node deployment with resource limits, healthchecks, and init script support.
+Production-ready ClickHouse single-node and distributed 3-node cluster deployments.
 
-## Quick Start
+## Single-Node
+
+### Quick Start
 
 ```bash
-# Create config directories (required even if empty)
+# Setup directories
 mkdir -p config.d users.d initdb
 
 # Start
 docker compose up -d
 
 # Verify
-docker exec -it clickhouse-server clickhouse-client \
-  --query "SELECT version()"
+docker exec clickhouse-26.5-jammy clickhouse-client \
+  --password clickh0use@123 --query "SELECT version()"
 ```
 
-## Services
-
-| Service | Container | Image | Ports |
-|---------|-----------|-------|-------|
-| **clickhouse** | `clickhouse-server` | `docker.arvancloud.ir/clickhouse/clickhouse-server:26.5` | `8123` (HTTP), `9000` (native) |
-
-## Environment Variables
+### Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `CLICKHOUSE_VERSION` | `26.5` | ClickHouse image tag |
-| `CLICKHOUSE_PASSWORD` | *(empty)* | Default user password. Requires `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` to be removed for this to take effect |
+| `CLICKHOUSE_PASSWORD` | `clickh0use@123` | Default user password |
+| `CLICKHOUSE_DB` | `forex` | Pre-created database |
 | `CH_HTTP_PORT` | `8123` | HTTP interface port |
 | `CH_NATIVE_PORT` | `9000` | Native TCP protocol port |
 | `CH_CPU_LIMIT` | `4` | CPU limit |
@@ -35,129 +32,77 @@ docker exec -it clickhouse-server clickhouse-client \
 | `CH_CPU_RESERVE` | `2` | CPU reservation |
 | `CH_MEM_RESERVE` | `8G` | Memory reservation |
 
-## Volumes
+### Volumes
 
 | Volume | Container Path | Purpose |
 |--------|---------------|---------|
 | `clickhouse_data` | `/var/lib/clickhouse` | Persistent data storage |
 | `clickhouse_logs` | `/var/log/clickhouse-server` | Server logs |
 | `./config.d` | `/etc/clickhouse-server/config.d` | Custom XML config files |
-| `./users.d` | `/etc/clickhouse-server/users.d` | Per-user quotas and settings |
+| `./users.d` | `/etc/clickhouse-server/users.d` | Per-user settings |
 | `./initdb` | `/docker-entrypoint-initdb.d` | SQL/shell scripts (run on first start) |
 
-## Initialization Scripts
-
-Place `.sql`, `.sql.gz`, or `.sh` files in `./initdb/`. They execute in alphabetical order on the first container start.
-
-Example — `./initdb/01-create-tables.sql`:
-```sql
-CREATE DATABASE IF NOT EXISTS analytics;
-
-CREATE TABLE analytics.events (
-    timestamp DateTime,
-    event_type String,
-    user_id UInt64,
-    payload String
-) ENGINE = MergeTree()
-ORDER BY (event_type, timestamp);
-```
-
-## Custom Configuration
-
-Drop XML files into `config.d/` to override server settings:
-
-`config.d/custom.xml`:
-```xml
-<clickhouse>
-    <max_connections>200</max_connections>
-    <max_memory_usage>10000000000</max_memory_usage>
-</clickhouse>
-```
-
-Per-user quotas go in `users.d/`:
-
-`users.d/analyst.xml`:
-```xml
-<clickhouse>
-    <profiles>
-        <analyst>
-            <max_memory_usage>5000000000</max_memory_usage>
-            <max_threads>4</max_threads>
-        </analyst>
-    </profiles>
-</clickhouse>
-```
-
-## Default User
-
-With `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` (our default):
-
-| Setting | Value |
-|---------|-------|
-| Username | `default` |
-| Password | *(empty)* |
-| Access | `access_management=1` — can create users, roles, grants via SQL |
-| Network | `::/0` (all interfaces) |
-
-Connect without a password and set one via SQL:
-
-```sql
-ALTER USER default IDENTIFIED BY 'new_password';
-```
-
-To switch to the traditional password model (password set via env var at container start), remove `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1` from the compose file.
-
-## .env File
-
-Create a `.env` in this directory (do not commit) to set passwords via SQL on first start, or remove `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1` from the compose and set:
-
-```ini
-CLICKHOUSE_PASSWORD=your_strong_password
-```
-
-## CLI Commands
+### CLI
 
 ```bash
-# Connect with client (no password when ACCESS_MANAGEMENT=1)
-docker exec -it clickhouse-server clickhouse-client
-
-# Run query directly
-docker exec clickhouse-server clickhouse-client \
-  --query "SHOW DATABASES"
-
-# Check resource usage
-docker stats clickhouse-server
+docker exec -it clickhouse-26.5-jammy clickhouse-client --password clickh0use@123
+docker exec clickhouse-26.5-jammy clickhouse-client --password clickh0use@123 --query "SHOW DATABASES"
 ```
 
-## Remote Connections
+## Distributed 3-Node Cluster
 
-By default, ClickHouse only listens on localhost inside the container. The `config.d/listen.xml` override enables listening on all interfaces (`0.0.0.0`), allowing remote connections.
+Located in `distributed/`. 3 shards × 1 replica (3S_1R) with embedded ClickHouse Keeper.
 
-Connect from a remote server using the host IP:
+### Quick Start
 
 ```bash
-# Native protocol (port 9000)
-clickhouse-client --host <host-ip> --port 9000
-
-# HTTP interface (port 8123)
-curl "http://<host-ip>:8123/?query=SELECT+version()"
+cd distributed
+docker compose up -d
 ```
 
-**Requirements:**
-- The host firewall must allow inbound traffic on ports `8123`/`9000`
-- Docker must expose these ports (already configured in the compose file)
+### Port Mapping
 
-## Security
+| Node | HTTP | Native | Keeper | Interserver |
+|------|------|--------|--------|-------------|
+| chnode1 | `8123` | `9000` | `9181` | `9234` |
+| chnode2 | `8124` | `9001` | `9182` | `9235` |
+| chnode3 | `8125` | `9002` | `9183` | `9236` |
 
-- Do not expose ports `8123`/`9000` directly to the public internet without a reverse proxy and TLS
-- Default user has an empty password and full admin rights. Set a password via SQL for any remote-facing deployment:
-  ```sql
-  ALTER USER default IDENTIFIED BY 'your_strong_password';
-  ```
-- Change the password in the compose file by removing `CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1` and setting `CLICKHOUSE_PASSWORD`
+### Basic Usage
+
+```bash
+# Create database & tables on all nodes
+docker exec chnode1 clickhouse-client --query \
+  "CREATE DATABASE IF NOT EXISTS rides ON CLUSTER 'cluster_3S_1R'"
+
+docker exec chnode1 clickhouse-client --query \
+  "CREATE TABLE rides.trips_local ON CLUSTER 'cluster_3S_1R' (
+     VendorID Int32, tpep_pickup_datetime DateTime64(6),
+     tpep_dropoff_datetime DateTime64(6), passenger_count Nullable(Int64),
+     trip_distance Nullable(Float64), fare_amount Nullable(Float64),
+     tip_amount Nullable(Float64), total_amount Nullable(Float64)
+   ) ENGINE = MergeTree
+   PARTITION BY toYYYYMM(tpep_pickup_datetime)
+   ORDER BY (tpep_pickup_datetime, tpep_dropoff_datetime)"
+
+# Create distributed table
+docker exec chnode1 clickhouse-client --query \
+  "CREATE TABLE rides.trips_distributed ON CLUSTER 'cluster_3S_1R'
+   AS rides.trips_local
+   ENGINE = Distributed('cluster_3S_1R', rides, trips_local, rand())"
+
+# Insert & query across all nodes
+docker exec chnode1 clickhouse-client --query \
+  "INSERT INTO rides.trips_distributed VALUES
+   (1,'2023-09-27 08:00:00','2023-09-27 08:30:00',2,5.2,20.5,4.0,25.8),
+   (2,'2023-09-27 09:15:00','2023-09-27 09:45:00',1,3.8,16.0,0,17.3)"
+
+docker exec chnode1 clickhouse-client --query \
+  "SELECT hostName() AS host, count(*) AS cnt FROM rides.trips_distributed GROUP BY host"
+```
 
 ## Production Notes
 
 - **Backup**: Use `clickhouse-backup` or `ALTER TABLE ... FREEZE` with S3-compatible storage
-- **High Availability**: This is a single-node setup. For HA, deploy a replicated cluster with ClickHouse Keeper across multiple nodes
-- **Monitoring**: ClickHouse exposes a built-in Prometheus endpoint at `http://localhost:8123/metrics`
+- **Security**: Do not expose ports directly. Default user (`clickh0use@123`) has `access_management=1`. Set a stronger password via `ALTER USER default IDENTIFIED BY 'new_pass'`
+- **Monitoring**: Built-in Prometheus endpoint at `http://localhost:8123/metrics`

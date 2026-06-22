@@ -1,0 +1,7 @@
+<clickhouse>
+    <max_concurrent_queries>100</max_concurrent_queries>
+    <max_server_memory_usage>0.9</max_server_memory_usage>
+    <http_port>8123</http_port>
+    <tcp_port>9000</tcp_port>
+    <timezone>UTC</timezone>
+</clickhouse>
