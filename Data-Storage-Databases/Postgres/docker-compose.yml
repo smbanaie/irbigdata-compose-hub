@@ -2,9 +2,9 @@ services:
   postgres:
     container_name: postgres
     hostname: postgres
-    image: docker.devneeds.ir/library/postgres:${PG_VERSION:-18}
+    image: docker.arvancloud.ir/library/postgres:${PG_VERSION:-18}
     volumes:
-      - ./db_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
       - ./postgres-init:/docker-entrypoint-initdb.d
     environment:
       - POSTGRES_PASSWORD=${PG_PASS:-postgres123}
@@ -12,17 +12,22 @@ services:
       - POSTGRES_DB=${PG_DB:-sepahram}
       - POSTGRES_HOST_AUTH_METHOD=${PG_AUTH:-trust}
       - PGDATA=/var/lib/postgresql/data
-    networks:
-      - services
     ports:
       - 5434:5432
-    restart: always
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - services
+    restart: unless-stopped
 
   pgadmin:
     container_name: pgadmin4
     hostname: pgadmin4
-    image: docker.devneeds.ir/dpage/pgadmin4
-    restart: always
+    image: docker.arvancloud.ir/dpage/pgadmin4
     profiles:
       - pgadmin
     environment:
@@ -32,10 +37,16 @@ services:
       - pgadmin_data:/var/lib/pgadmin
     ports:
       - "5050:80"
+    mem_limit: ${MEM_LIMIT:-256m}
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks:
       - services
+    restart: unless-stopped
 
 volumes:
+  postgres_data:
   pgadmin_data:
 
 networks:
