@@ -1,27 +1,31 @@
-version: '3.9'
-
 volumes:
-  grafana_data: {}
+  grafana_data:
 
 networks:
   grafana:
 
-services: 
-  grafana: 
+services:
+  grafana:
     container_name: grafana
-    image: docker.arvancloud.ir/grafana/grafana:11.0.0  
+    image: docker.arvancloud.ir/grafana/grafana:11.0.0
     ports:
       - '3000:3000'
     environment:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_USERS_ALLOW_ORG_CREATE=false
-      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Read Only Editor 
-      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel,marcusolsson-gantt-panel,grafana-worldmap-panel,briangann-gauge-panel,natel-plotly-panel
+      - GF_USERS_AUTO_ASSIGN_ORG_ROLE=Read Only Editor
+      - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource,grafana-piechart-panel,marcusolsson-gantt-panel,grafana-worldmap-panel,briannang-gauge-panel,natel-plotly-panel
     volumes:
       - ./data/logs:/var/log/grafana
       - ./data/provisioning:/etc/grafana/provisioning
       - ./data/plugins:/var/lib/grafana/plugins
       - grafana_data:/var/lib/grafana
+    mem_limit: ${MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: unless-stopped
     networks:
       - grafana
@@ -36,6 +40,13 @@ services:
       - "--storage.tsdb.path=/prometheus"
     ports:
       - 9090:9090
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
     networks:
       - grafana
 
@@ -52,15 +63,27 @@ services:
       - PGDATA=/var/lib/postgresql/data
     ports:
       - 5432:5432
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     networks:
-        - grafana
+      - grafana
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter
+    image: docker.arvancloud.ir/prometheuscommunity/postgres-exporter:latest
     container_name: postgres-exporter
     environment:
       - DATA_SOURCE_NAME=postgresql://postgres:123456@postgres:5432/testdb?sslmode=disable
     ports:
       - 9187:9187
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
     networks:
       - grafana

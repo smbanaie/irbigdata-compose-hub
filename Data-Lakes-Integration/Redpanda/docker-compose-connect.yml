@@ -2,8 +2,6 @@ services:
   redpanda:
     container_name: redpanda
     hostname: redpanda
-    networks:
-      - redpanda_network
     image: docker.arvancloud.ir/redpandadata/redpanda:latest
     command:
       - redpanda
@@ -26,6 +24,14 @@ services:
     environment:
       KAFKA_ADVERTISED_LISTENERS: "GENERAL://redpanda:3092"
       KAFKA_LISTENERS: "GENERAL://0.0.0.0:3092"
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "localhost:9644/v1/status/ready" ]
+      start_period: 5s
+      interval: 3s
+    restart: unless-stopped
+    networks:
+      - redpanda_network
 
   redpanda_console:
     image: docker.arvancloud.ir/redpandadata/console:latest
@@ -34,10 +40,13 @@ services:
       - "9100:8080"
     environment:
       KAFKA_BROKERS: "redpanda:3092"
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
     networks:
       - redpanda_network
-    depends_on:
-      - redpanda
 
   redpanda_connect:
     image: docker.arvancloud.ir/redpandadata/connect:latest
@@ -46,10 +55,13 @@ services:
     volumes:
       - ./connect-config.yaml:/connect.yaml
       - ./data:/data
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-512m}
+    restart: unless-stopped
     networks:
       - redpanda_network
-    depends_on:
-      - redpanda
 
 networks:
   redpanda_network:

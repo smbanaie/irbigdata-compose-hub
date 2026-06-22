@@ -1,5 +1,3 @@
-version: "3"
-
 services:
   redpanda:
     container_name: redpanda
@@ -14,14 +12,16 @@ services:
     ports:
       - "9092:9092"
       - "29092:29092"
-    networks:
-      - services
+    mem_limit: ${MEM_LIMIT:-2g}
     healthcheck:
       test: ["CMD", "rpk", "cluster", "info", "||", "exit 1"]
       start_period: 10s
       interval: 5s
       timeout: 10s
       retries: 5
+    restart: unless-stopped
+    networks:
+      - services
 
   console:
     container_name: redpanda-console
@@ -37,13 +37,15 @@ services:
           adminApi:
             enabled: true
             urls: ["http://redpanda:9644"]
-    networks:
-      - services
     ports:
       - 9300:8080
     depends_on:
       redpanda:
         condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
+    networks:
+      - services
 
   kafkaHQ:
     image: docker.arvancloud.ir/tchiotludo/akhq
@@ -58,12 +60,13 @@ services:
             docker-kafka-server:
               properties:
                 bootstrap.servers: "redpanda:29092"
-    networks:
-      - services
-    restart: on-failure:10
     depends_on:
       redpanda:
         condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-512m}
+    restart: unless-stopped
+    networks:
+      - services
 
   kafka-ui:
     container_name: kafka-ui
@@ -74,11 +77,13 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: redpanda:29092
       DYNAMIC_CONFIG_ENABLED: 'true'
-    networks:
-      - services
     depends_on:
       redpanda:
         condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
+    networks:
+      - services
 
 networks:
   services:

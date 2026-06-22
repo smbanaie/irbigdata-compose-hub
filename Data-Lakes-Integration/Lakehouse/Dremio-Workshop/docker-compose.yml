@@ -1,13 +1,18 @@
-version: "3"
-
 services:
   nessie:
     image: docker.arvancloud.ir/projectnessie/nessie:latest
     container_name: nessie
-    networks:
-      dremio-file-ingestion:
     ports:
       - 19120:19120
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19120/api/v1/trees"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - dremio-file-ingestion
 
   minio:
     image: docker.arvancloud.ir/minio/minio:latest
@@ -18,17 +23,25 @@ services:
       - MINIO_DOMAIN=storage
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
-    networks:
-      dremio-file-ingestion:
     ports:
       - 9001:9001
       - 9000:9000
     command: ["server", "/data", "--console-address", ":9001"]
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - dremio-file-ingestion
 
   minio-setup:
     image: docker.arvancloud.ir/minio/mc:latest
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=password
@@ -45,7 +58,7 @@ services:
       mc cp --recursive /tmp/data/* minio/sampledata/ &&
       echo 'Buckets created and data loaded.'"
     networks:
-      dremio-file-ingestion:
+      - dremio-file-ingestion
 
   dremio:
     image: docker.arvancloud.ir/dremio/dremio-oss
@@ -58,17 +71,28 @@ services:
     environment:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
     depends_on:
-      - minio-setup
+      minio-setup:
+        condition: service_completed_successfully
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9047"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
     networks:
-      dremio-file-ingestion:
+      - dremio-file-ingestion
 
   superset:
     image: docker.arvancloud.ir/alexmerced/dremio-superset
     container_name: superset
-    networks:
-      dremio-file-ingestion:
     ports:
       - 8088:8088
+    mem_limit: ${MEM_LIMIT:-1g}
+    restart: unless-stopped
+    networks:
+      - dremio-file-ingestion
 
 networks:
   dremio-file-ingestion:

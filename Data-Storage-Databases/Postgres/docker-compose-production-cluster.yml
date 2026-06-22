@@ -1,6 +1,6 @@
 services:
   primary:
-    image: docker.arvancloud.ir/postgres:18
+    image: docker.arvancloud.ir/library/postgres:18
     container_name: pg-primary
     environment:
       POSTGRES_PASSWORD: password123
@@ -8,7 +8,7 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./primary_data:/var/lib/postgresql/data
+      - primary_data:/var/lib/postgresql/data
       - ./archive:/archive
     command: |
       postgres
@@ -23,11 +23,18 @@ services:
       -c archive_command='test ! -f /archive/%f && cp %p /archive/%f'
       -c synchronous_commit=on
       -c synchronous_standby_names='FIRST 1 (standby_sync)'
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
     networks:
       - pg-net
 
   standby_sync:
-    image: docker.arvancloud.ir/postgres:18
+    image: docker.arvancloud.ir/library/postgres:18
     container_name: pg-standby-sync
     environment:
       POSTGRES_PASSWORD: password123
@@ -35,14 +42,22 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - ./standby_sync_data:/var/lib/postgresql/data
+      - standby_sync_data:/var/lib/postgresql/data
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      - primary
+      primary:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - pg-net
 
   standby_async:
-    image: docker.arvancloud.ir/postgres:18
+    image: docker.arvancloud.ir/library/postgres:18
     container_name: pg-standby-async
     environment:
       POSTGRES_PASSWORD: password123
@@ -50,14 +65,22 @@ services:
     ports:
       - "5434:5432"
     volumes:
-      - ./standby_async_data:/var/lib/postgresql/data
+      - standby_async_data:/var/lib/postgresql/data
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      - primary
+      primary:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - pg-net
 
   standby_cascade:
-    image: docker.arvancloud.ir/postgres:18
+    image: docker.arvancloud.ir/library/postgres:18
     container_name: pg-standby-cascade
     profiles: ["cascade"]
     environment:
@@ -66,11 +89,25 @@ services:
     ports:
       - "5435:5432"
     volumes:
-      - ./standby_cascade_data:/var/lib/postgresql/data
+      - standby_cascade_data:/var/lib/postgresql/data
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     depends_on:
-      - standby_sync
+      standby_sync:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - pg-net
 
+volumes:
+  primary_data:
+  standby_sync_data:
+  standby_async_data:
+  standby_cascade_data:
+
 networks:
-  pg-net: {}
+  pg-net:

@@ -35,7 +35,7 @@ services:
   # Handles metadata management, query planning, and SQL parsing
   # =============================================================================
   starrocks-fe-1:
-    image: starrocks/fe-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0.5
     container_name: starrocks-fe-1
     hostname: starrocks-fe-1
     user: root
@@ -115,7 +115,7 @@ services:
       - starrocks-network
 
   starrocks-fe-2:
-    image: starrocks/fe-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0.5
     container_name: starrocks-fe-2
     hostname: starrocks-fe-2
     user: root
@@ -198,7 +198,7 @@ services:
 
 
   starrocks-fe-3:
-    image: starrocks/fe-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/fe-ubuntu:4.0.5
     container_name: starrocks-fe-3
     hostname: starrocks-fe-3
     user: root
@@ -285,7 +285,7 @@ services:
   # Handles distributed query execution and computation
   # =============================================================================
   starrocks-cn-1:
-    image: starrocks/cn-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0.5
     container_name: starrocks-cn-1
     hostname: starrocks-cn-1
     user: root
@@ -340,7 +340,7 @@ services:
 
 
   starrocks-cn-2:
-    image: starrocks/cn-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0.5
     container_name: starrocks-cn-2
     hostname: starrocks-cn-2
     user: root
@@ -395,7 +395,7 @@ services:
 
 
   starrocks-cn-3:
-    image: starrocks/cn-ubuntu:4.0.5
+    image: docker.arvancloud.ir/starrocks/cn-ubuntu:4.0.5
     container_name: starrocks-cn-3
     hostname: starrocks-cn-3
     user: root
@@ -454,7 +454,7 @@ services:
   # Provides high availability and load balancing for SQL queries
   # =============================================================================
   haproxy-fe:
-    image: haproxy:2.9-alpine
+    image: docker.arvancloud.ir/library/haproxy:2.9-alpine
     container_name: haproxy-fe
     hostname: haproxy-fe
     ports:
@@ -488,7 +488,7 @@ services:
   # Creates necessary buckets and configurations in MinIO
   # =============================================================================
   starrocks-init:
-    image: minio/mc:latest
+    image: docker.arvancloud.ir/minio/mc:latest
     container_name: starrocks-init
     depends_on:
       minio-1:
@@ -500,6 +500,7 @@ services:
       minio-lb:
         condition: service_healthy
     networks:
+      - starrocks-network
 
     entrypoint:
       - /bin/sh
@@ -531,7 +532,7 @@ services:
   # Monitoring Stack - Prometheus for StarRocks
   # =============================================================================
   prometheus-starrocks:
-    image: prom/prometheus:latest
+    image: docker.arvancloud.ir/prom/prometheus:latest
     container_name: prometheus-starrocks
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
@@ -566,7 +567,7 @@ services:
   # Grafana for StarRocks Monitoring
   # =============================================================================
   grafana-starrocks:
-    image: grafana/grafana-oss:latest
+    image: docker.arvancloud.ir/grafana/grafana-oss:latest
     container_name: grafana-starrocks
     expose:
       - "3000"

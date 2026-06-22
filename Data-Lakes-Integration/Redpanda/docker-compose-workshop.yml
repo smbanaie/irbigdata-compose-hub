@@ -1,20 +1,22 @@
 services:
   minio:
     container_name: minio
-    environment:
-      MINIO_ROOT_USER: miniouser
-      MINIO_ROOT_PASSWORD: miniopassword
     image: docker.arvancloud.ir/minio/minio:latest
+    entrypoint: sh
+    command: '-c ''mkdir -p /minio_data/starrocks && minio server /minio_data --console-address ":9001"'''
     ports:
       - "9001:9001"
       - "9000:9000"
-    entrypoint: sh
-    command: '-c ''mkdir -p /minio_data/starrocks && minio server /minio_data --console-address ":9001"'''
+    environment:
+      MINIO_ROOT_USER: miniouser
+      MINIO_ROOT_PASSWORD: miniopassword
+    mem_limit: ${MEM_LIMIT:-2g}
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - services
 
@@ -33,7 +35,9 @@ services:
         myminio \
         miniouser
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
+    restart: unless-stopped
     networks:
       - services
 
@@ -50,10 +54,12 @@ services:
     ports:
       - "9092:9092"
       - "29092:29092"
+    mem_limit: ${MEM_LIMIT:-2g}
     healthcheck:
       test: [ "CMD", "curl", "-f", "localhost:9644/v1/status/ready" ]
       start_period: 5s
       interval: 3s
+    restart: unless-stopped
     networks:
       - services
 
@@ -74,7 +80,10 @@ services:
     ports:
       - 9100:8080
     depends_on:
-      - redpanda
+      redpanda:
+        condition: service_healthy
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
     networks:
       - services
 

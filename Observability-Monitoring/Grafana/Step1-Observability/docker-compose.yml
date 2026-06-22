@@ -1,10 +1,8 @@
-version: "3"
-
 networks:
   grafana:
 
 volumes:
-  app_data: {}
+  app_data:
 
 services:
   prometheus:
@@ -16,6 +14,13 @@ services:
       - "--storage.tsdb.path=/prometheus"
     ports:
       - 9090:9090
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:9090/-/healthy"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
     networks:
       - grafana
 
@@ -24,6 +29,13 @@ services:
     ports:
       - 3100:3100
     command: -config.file=/etc/loki/local-config.yaml
+    mem_limit: ${MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:3100/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
     networks:
       - grafana
 
@@ -31,6 +43,8 @@ services:
     image: docker.arvancloud.ir/grafana/promtail:latest
     volumes:
       - app_data:/var/log
+    mem_limit: ${MEM_LIMIT:-256m}
+    restart: unless-stopped
     networks:
       - grafana
 
@@ -38,8 +52,6 @@ services:
     image: docker.arvancloud.ir/grafana/grafana:latest
     ports:
       - 3000:3000
-    networks:
-      - grafana
     environment:
       - "GF_DEFAULT_APP_MODE=development"
       - "GF_LOG_LEVEL=debug"
@@ -51,6 +63,15 @@ services:
       - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
       - ./grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - ./grafana/dashboards:/var/lib/grafana/dashboards
+    mem_limit: ${MEM_LIMIT:-512m}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - grafana
 
   app:
     build: ./app
@@ -58,6 +79,7 @@ services:
       - 8081:80
     volumes:
       - app_data:/var/log
+    restart: unless-stopped
     networks:
       - grafana
 
@@ -65,5 +87,6 @@ services:
     image: docker.arvancloud.ir/grafana/tns-db:latest
     ports:
       - 8082:80
+    restart: unless-stopped
     networks:
       - grafana

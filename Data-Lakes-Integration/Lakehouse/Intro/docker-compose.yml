@@ -1,13 +1,18 @@
-version: "3"
-
 services:
   nessie:
     image: docker.arvancloud.ir/projectnessie/nessie:latest
     container_name: nessie
-    networks:
-      iceberg:
     ports:
       - 19120:19120
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19120/api/v1/trees"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - iceberg
 
   minio:
     image: docker.arvancloud.ir/minio/minio:latest
@@ -18,24 +23,39 @@ services:
       - MINIO_DOMAIN=storage
       - MINIO_REGION_NAME=us-east-1
       - MINIO_REGION=us-east-1
-    networks:
-      iceberg:
     ports:
       - 9001:9001
       - 9000:9000
     command: ["server", "/data", "--console-address", ":9001"]
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - iceberg
 
   dremio:
     image: docker.arvancloud.ir/dremio/dremio-oss:latest
+    container_name: dremio
     ports:
       - 9047:9047
       - 31010:31010
       - 32010:32010
-    container_name: dremio
     environment:
       - DREMIO_JAVA_SERVER_EXTRA_OPTS=-Dpaths.dist=file:///opt/dremio/data/dist
+    mem_limit: ${MEM_LIMIT:-4g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9047"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    restart: unless-stopped
     networks:
-      iceberg:
+      - iceberg
 
 networks:
   iceberg:
