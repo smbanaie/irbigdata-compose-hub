@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  sairo:
+    image: stephenjr002/sairo:latest
+    container_name: sairo
+    ports:
+      - "8000:8000"
+    environment:
+      S3_ENDPOINT: "https://your-s3-endpoint.com"
+      S3_ACCESS_KEY: "your-access-key"
+      S3_SECRET_KEY: "your-secret-key"
+      ADMIN_PASS: "choose-a-strong-password"
+      JWT_SECRET: "$(openssl rand -hex 32)"
+      SECURE_COOKIE: "false"
+    volumes:
+      - sairo-data:/data
+    networks:
+      - sairo-net
+
+networks:
+  sairo-net:
+    driver: bridge
+
+volumes:
+  sairo-data:

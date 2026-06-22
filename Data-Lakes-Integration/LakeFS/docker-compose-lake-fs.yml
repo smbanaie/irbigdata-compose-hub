@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: docker.arvancloud.ir/library/postgres:${PG_VERSION:-11}
+    container_name: lakefs-db
+    command: "-c log_min_messages=FATAL"
+    environment:
+      POSTGRES_USER: lakefs
+      POSTGRES_PASSWORD: lakefs
+      POSTGRES_DB: lakefs
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lakefs"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: none
+    restart: unless-stopped
+
+  lakefs:
+    image: docker.arvancloud.ir/treeverse/lakefs:${VERSION:-latest}
+    container_name: lakefs
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - LAKEFS_AUTH_ENCRYPT_SECRET_KEY=${LAKEFS_AUTH_ENCRYPT_SECRET_KEY:-some random secret string}
+      - LAKEFS_DATABASE_CONNECTION_STRING=${LAKEFS_DATABASE_CONNECTION_STRING:-postgres://lakefs:lakefs@postgres/postgres?sslmode=disable}
+      - LAKEFS_BLOCKSTORE_TYPE=${LAKEFS_BLOCKSTORE_TYPE:-local}
+      - LAKEFS_BLOCKSTORE_LOCAL_PATH=${LAKEFS_BLOCKSTORE_LOCAL_PATH:-/home/lakefs}
+      - LAKEFS_GATEWAYS_S3_DOMAIN_NAME=${LAKEFS_GATEWAYS_S3_DOMAIN_NAME:-s3.local.lakefs.io:8000}
+      - LAKEFS_BLOCKSTORE_S3_CREDENTIALS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID:-}
+      - LAKEFS_BLOCKSTORE_S3_CREDENTIALS_ACCESS_SECRET_KEY=${AWS_SECRET_ACCESS_KEY:-}
+      - LAKEFS_LOGGING_LEVEL=${LAKEFS_LOGGING_LEVEL:-INFO}
+      - LAKEFS_STATS_ENABLED
+      - LAKEFS_BLOCKSTORE_S3_ENDPOINT
+      - LAKEFS_BLOCKSTORE_S3_FORCE_PATH_STYLE
+      - LAKEFS_CATALOGER_TYPE
+      - LAKEFS_COMMITTED_LOCAL_CACHE_DIR=${LAKEFS_COMMITTED_LOCAL_CACHE_DIR:-/home/lakefs/.local_tier}
+    mem_limit: ${MEM_LIMIT:-1g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+    entrypoint: ["/app/wait-for", "postgres:5432", "--", "/app/lakefs", "run"]
+
+volumes:
+  postgres_data:

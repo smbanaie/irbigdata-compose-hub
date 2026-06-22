@@ -1,0 +1,51 @@
+services:
+  minio1:
+    image: docker.arvancloud.ir/minio/minio:RELEASE.2021-05-11T23-27-41Z
+    container_name: minio1
+    volumes:
+      - data1-1:/data1
+      - data1-2:/data2
+    expose:
+      - "9000"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio123}
+    command: server http://minio{1}/data{1..2}
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - services
+    restart: unless-stopped
+
+  nginx:
+    image: docker.arvancloud.ir/library/nginx:1.19.2-alpine
+    container_name: minio-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9000:9000"
+    depends_on:
+      - minio1
+    mem_limit: ${MEM_LIMIT:-128m}
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - services
+    restart: unless-stopped
+
+volumes:
+  data1-1:
+  data1-2:
+  data2-1:
+  data2-2:
+
+networks:
+  services:
+    name: ${APP_NAME}_network

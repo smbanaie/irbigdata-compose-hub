@@ -1,0 +1,42 @@
+services:
+  minio:
+    image: docker.arvancloud.ir/minio/minio:latest
+    container_name: minio
+    command: server /data_lake --console-address ":9001"
+    volumes:
+      - minio_data:/data_lake
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-admin123}
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - services
+    restart: unless-stopped
+
+  mc:
+    image: docker.arvancloud.ir/minio/mc
+    container_name: mc
+    volumes:
+      - ./.mc:/root/.mc
+      - ./policy:/policy
+    depends_on:
+      minio:
+        condition: service_healthy
+    networks:
+      - services
+    restart: unless-stopped
+
+volumes:
+  minio_data:
+
+networks:
+  services:
+    name: ${APP_NAME}_network
