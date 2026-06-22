@@ -1,0 +1,164 @@
+services:
+  namenode:
+    image: docker.arvancloud.ir/bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    restart: unless-stopped
+    ports:
+      - 9870:9870
+      - 9000:9000
+    volumes:
+      - hadoop_namenode:/hadoop/dfs/name
+      - ./data/hadoop:/data
+    environment:
+      - CLUSTER_NAME=test
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - services
+
+  datanode:
+    image: docker.arvancloud.ir/bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    restart: unless-stopped
+    hostname: datanode
+    ports:
+      - 9864:9864
+    volumes:
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-2g}
+    networks:
+      - services
+
+  spark-master:
+    image: docker.arvancloud.ir/nikamooz/spark:3.1.2
+    build: ./build/spark
+    container_name: spark-master
+    hostname: spark-master
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    volumes:
+      - ./data/apps:/opt/spark-apps
+      - ./data/data:/opt/spark-data
+    environment:
+      - SPARK_LOCAL_IP=spark-master
+      - SPARK_WORKLOAD=master
+      - SPARK_LOCAL_HOSTNAME=spark-master
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-2g}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - services
+    restart: unless-stopped
+
+  spark-worker1:
+    image: docker.arvancloud.ir/nikamooz/spark:3.1.2
+    build: ./build/spark
+    container_name: spark-worker1
+    hostname: spark-worker1
+    ports:
+      - "8081:8080"
+      - "7000:7000"
+    depends_on:
+      spark-master:
+        condition: service_started
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker1
+      - SPARK_LOCAL_HOSTNAME=spark-worker1
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-4g}
+    volumes:
+      - ./data/apps:/opt/spark-apps
+      - ./data/data:/opt/spark-data
+    networks:
+      - services
+    restart: unless-stopped
+
+  spark-worker2:
+    image: docker.arvancloud.ir/nikamooz/spark:3.1.2
+    build: ./build/spark
+    container_name: spark-worker2
+    hostname: spark-worker2
+    ports:
+      - "8082:8080"
+      - "7001:7000"
+    depends_on:
+      spark-master:
+        condition: service_started
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_WORKER_CORES=1
+      - SPARK_WORKER_MEMORY=1G
+      - SPARK_DRIVER_MEMORY=1G
+      - SPARK_EXECUTOR_MEMORY=1G
+      - SPARK_WORKLOAD=worker
+      - SPARK_LOCAL_IP=spark-worker2
+      - SPARK_LOCAL_HOSTNAME=spark-worker2
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:8020
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-4g}
+    volumes:
+      - ./data/apps:/opt/spark-apps
+      - ./data/data:/opt/spark-data
+    networks:
+      - services
+    restart: unless-stopped
+
+  pyspark:
+    image: docker.arvancloud.ir/nikamooz/pyspark:3.1.2
+    build: ./build/pyspark
+    container_name: pyspark
+    hostname: pyspark
+    volumes:
+      - ./data/notebooks:/opt/spark-notebooks
+      - ./data/data:/opt/spark-data
+    ports:
+      - 8888:8888
+      - 4040-4042:4040-4042
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - SPARK_LOCAL_IP=pyspark
+      - SPARK_WORKLOAD=submit
+      - SPARK_LOCAL_HOSTNAME=pyspark
+    depends_on:
+      spark-master:
+        condition: service_started
+    env_file:
+      - ./hadoop.env
+    mem_limit: ${MEM_LIMIT:-2g}
+    networks:
+      - services
+    restart: unless-stopped
+
+networks:
+  services:
+    name: ${APP_NAME}_network
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
