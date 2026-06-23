@@ -13,6 +13,7 @@ services:
       - ./data-rustfs/node1:/data
     networks:
       - rustfs-net
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
       interval: 10s
@@ -29,6 +30,7 @@ services:
       - ./data-rustfs/node2:/data
     networks:
       - rustfs-net
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
       interval: 10s
@@ -45,6 +47,7 @@ services:
       - ./data-rustfs/node3:/data
     networks:
       - rustfs-net
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/ready"]
       interval: 10s

@@ -63,6 +63,7 @@ services:
       - es_cluster
 
   es01:
+    restart: unless-stopped
     depends_on:
       setup:
         condition: service_healthy
@@ -105,6 +106,7 @@ services:
       - es_cluster
 
   es02:
+    restart: unless-stopped
     depends_on:
       - es01
     image: docker.arvancloud.ir/library/elasticsearch:${STACK_VERSION}
@@ -144,6 +146,7 @@ services:
       - es_cluster
 
   es03:
+    restart: unless-stopped
     depends_on:
       - es02
     image: docker.arvancloud.ir/library/elasticsearch:${STACK_VERSION}
@@ -183,6 +186,7 @@ services:
       - es_cluster
 
   kibana:
+    restart: unless-stopped
     depends_on:
       es01:
         condition: service_healthy
@@ -212,6 +216,7 @@ services:
       - es_cluster
 
   apm-server:
+    restart: unless-stopped
     image: docker.arvancloud.ir/elastic/apm-server:8.19.4
     ports:
       - 8200:8200
